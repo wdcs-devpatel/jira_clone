@@ -1,31 +1,45 @@
 import { useNavigate } from "react-router-dom";
+import { Pencil, Trash2 } from "lucide-react";
 
-export default function ProjectCard({ project }) {
+export default function ProjectCard({
+  project,
+  onEdit,
+  onDelete,
+}) {
   const navigate = useNavigate();
 
   return (
-    <div className="bg-slate-800 rounded-xl shadow-lg hover:shadow-2xl transition p-5 flex flex-col">
-      <div className="flex items-center gap-4 mb-4">
-        <div className="w-12 h-12 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-xl">
-          {project.name[0]}
-        </div>
+    <div
+      className="group relative bg-slate-800 border border-slate-700 rounded-xl p-5 hover:-translate-y-1 transition-all cursor-pointer"
+      onClick={() => navigate(`/kanban/${project.id}`)}
+    >
+      {/* ACTION BUTTONS */}
+      <div
+        className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={() => onEdit(project)}
+          className="p-1.5 rounded-md bg-slate-700 hover:bg-indigo-600"
+        >
+          <Pencil size={14} />
+        </button>
 
-        <div>
-          <h3 className="text-lg font-semibold text-white">
-            {project.name}
-          </h3>
-          <p className="text-sm text-gray-400">
-            {project.description}
-          </p>
-        </div>
+        <button
+          onClick={() => onDelete(project.id)}
+          className="p-1.5 rounded-md bg-slate-700 hover:bg-red-600"
+        >
+          <Trash2 size={14} />
+        </button>
       </div>
 
-      <button
-        onClick={() => navigate(`/kanban/${project.id}`)}
-        className="mt-auto bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg font-medium"
-      >
-        Go to Board →
-      </button>
+      <h3 className="text-lg font-semibold text-white">
+        {project.name}
+      </h3>
+
+      <p className="text-slate-400 text-sm mt-2">
+        {project.description}
+      </p>
     </div>
   );
 }
