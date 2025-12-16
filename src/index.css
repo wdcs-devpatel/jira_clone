@@ -1,0 +1,6 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+body {
+  @apply bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#020617] text-white;
+}
