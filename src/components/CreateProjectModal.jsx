@@ -19,10 +19,10 @@ export default function CreateProjectModal({
     }
   }, [editingProject]);
 
-  function handleSubmit(e) {
+  function handleSubmit(e) { 
+       
     e.preventDefault();
-    if (!name.trim()) return;
-
+    if (!name.trim()) return;   
     if (editingProject) {
       updateProject(editingProject.id, { name, description });
     } else {
