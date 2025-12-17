@@ -10,7 +10,7 @@ export default function TaskDetails({ task }) {
       try {
         const data = await getTaskComments(task.id);
         setComments(data);
-      } catch (e) {
+      } catch {
         setComments([]);
       } finally {
         setLoading(false);
@@ -21,48 +21,54 @@ export default function TaskDetails({ task }) {
   }, [task.id]);
 
   return (
-    <>
-      <h2 className="text-xl font-semibold mb-2">
-        {task.todo}
+    <div className="text-white">
+      <h2 className="text-xl font-semibold mb-3">
+        {task.title}
       </h2>
 
-      <div className="flex gap-3 mb-4 text-sm">
+      <div className="flex flex-wrap gap-2 mb-5 text-xs">
         <span
           className={`px-3 py-1 rounded-full ${
-            task.completed ? "bg-green-600" : "bg-yellow-600"
+            task.status === "done"
+              ? "bg-green-600/80"
+              : "bg-yellow-600/80"
           }`}
         >
-          {task.completed ? "Completed" : "Pending"}
+          {task.status === "done" ? "Completed" : "Pending"}
         </span>
 
-        <span className="bg-gray-700 px-3 py-1 rounded-full">
-          User #{task.userId}
+        <span className="bg-slate-700 px-3 py-1 rounded-full">
+          Project: {task.projectId}
         </span>
       </div>
 
-      <h3 className="text-lg font-medium mb-2">Comments</h3>
+      <h3 className="text-sm font-semibold mb-2 text-slate-300">
+        Comments
+      </h3>
 
       {loading && (
-        <p className="text-gray-400 text-sm">Loading comments…</p>
+        <p className="text-slate-400 text-sm">Loading comments…</p>
       )}
 
       {!loading && comments.length === 0 && (
-        <p className="text-gray-400 text-sm">No comments found.</p>
+        <p className="text-slate-400 text-sm">
+          No comments available
+        </p>
       )}
 
-      <div className="space-y-3 max-h-56 overflow-y-auto">
+      <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
         {comments.map((c) => (
           <div
             key={c.id}
-            className="bg-gray-700 p-3 rounded text-sm"
+            className="bg-slate-800 border border-slate-700 rounded-lg p-3 text-sm"
           >
-            <p>{c.body}</p>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-slate-200">{c.body}</p>
+            <p className="text-xs text-slate-400 mt-2">
               — {c.user.username}
             </p>
           </div>
         ))}
       </div>
-    </>
+    </div>
   );
 }

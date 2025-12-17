@@ -9,6 +9,8 @@ import {
   Activity,
   Pencil,
   Trash2,
+  AlertTriangle, 
+  X,
 } from "lucide-react";
 
 import { getAllTasks } from "../services/taskService";
@@ -24,8 +26,10 @@ export default function Dashboard() {
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
+  const [projectToDelete, setProjectToDelete] = useState(null); 
 
   const navigate = useNavigate();
 
@@ -70,10 +74,16 @@ export default function Dashboard() {
     { label: "Pending", value: stats.pending, icon: LayoutDashboard, color: "text-slate-400", bg: "bg-slate-500/10", border: "border-slate-500/20" },
   ];
 
-  function handleDeleteProject(projectId) {
-    if (!confirm("Are you sure you want to delete this project?")) return;
-    deleteProject(projectId);
-    setProjects(getProjects());
+  function handleDeleteClick(projectId) {
+    setProjectToDelete(projectId);
+  }
+
+  function confirmDelete() {
+    if (projectToDelete) {
+      deleteProject(projectToDelete);
+      setProjects(getProjects());
+      setProjectToDelete(null); 
+    }
   }
 
   function handleProjectClick(projectId) {
@@ -96,6 +106,43 @@ export default function Dashboard() {
             setShowCreateProject(false);
           }}
         />
+      )}
+
+      {projectToDelete && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 transition-all">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 transform scale-100 animate-in fade-in zoom-in duration-200">
+            
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-red-500/10 rounded-full shrink-0">
+                <AlertTriangle className="w-6 h-6 text-red-500" />
+              </div>
+              
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-white mb-2">
+                  Delete Project?
+                </h3>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  Are you sure you want to delete this project? This action will permanently remove the project and all its associated tasks. This cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setProjectToDelete(null)}
+                className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors border border-slate-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-lg shadow-red-500/20 transition-all hover:scale-105"
+              >
+                Delete Project
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="max-w-7xl mx-auto space-y-8">
@@ -146,7 +193,7 @@ export default function Dashboard() {
                   project={project}
                   onClick={() => handleProjectClick(project.id)}
                   onEdit={() => setEditingProject(project)}
-                  onDelete={() => handleDeleteProject(project.id)}
+                  onDelete={() => handleDeleteClick(project.id)} 
                 />
               ))}
               
@@ -269,4 +316,4 @@ function ProjectCard({ project, onEdit, onDelete, onClick }) {
       </div>
     </div>
   );
-} 
+}
