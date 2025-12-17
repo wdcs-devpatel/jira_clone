@@ -16,7 +16,6 @@ export default function TaskDetails({ task }) {
         setLoading(false);
       }
     }
-
     loadComments();
   }, [task.id]);
 

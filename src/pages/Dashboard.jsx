@@ -71,7 +71,7 @@ export default function Dashboard() {
     { label: "Total Tasks", value: stats.total, icon: ListTodo, color: "text-indigo-400", bg: "bg-indigo-500/10", border: "border-indigo-500/20" },
     { label: "Completed", value: stats.completed, icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
     { label: "In Progress", value: stats.inProgress, icon: Clock, color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
-    { label: "Pending", value: stats.pending, icon: LayoutDashboard, color: "text-slate-400", bg: "bg-slate-500/10", border: "border-slate-500/20" },
+    { label: "To Do", value: stats.pending, icon: LayoutDashboard, color: "text-slate-400", bg: "bg-slate-500/10", border: "border-slate-500/20" },
   ];
 
   function handleDeleteClick(projectId) {

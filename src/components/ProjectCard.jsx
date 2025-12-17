@@ -13,7 +13,6 @@ export default function ProjectCard({
       className="group relative bg-slate-800 border border-slate-700 rounded-xl p-5 hover:-translate-y-1 transition-all cursor-pointer"
       onClick={() => navigate(`/kanban/${project.id}`)}
     >
-      {/* ACTION BUTTONS */}
       <div
         className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition"
         onClick={(e) => e.stopPropagation()}
@@ -30,7 +29,7 @@ export default function ProjectCard({
           className="p-1.5 rounded-md bg-slate-700 hover:bg-red-600"
         >
           <Trash2 size={14} />
-        </button>
+        </button> 
       </div>
 
       <h3 className="text-lg font-semibold text-white">

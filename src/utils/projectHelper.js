@@ -1,9 +1,7 @@
 const STORAGE_KEY = "projects";
-const TASK_PROJECTS_KEY = "taskProjects"; // Consistent key
+const TASK_PROJECTS_KEY = "taskProjects"; 
 
-/* =========================
-   PROJECT MANAGMENT
-   ========================= */
+
 
 function safeSet(data) {
   try {
@@ -17,7 +15,7 @@ export function getProjects() {
     if (Array.isArray(stored) && stored.length > 0) return stored;
   } catch {}
 
-  // Default Projects
+
   const defaults = [
     { id: "alpha", name: "Project Alpha", description: "Main product work" },
     { id: "beta", name: "Project Beta", description: "Internal improvements" },
@@ -30,7 +28,7 @@ export function getProjects() {
 
 export function addProject(project) {
   const projects = getProjects();
-  // Ensure we add a unique ID if not provided
+
   const newProject = { ...project, id: project.id || `proj-${Date.now()}` };
   projects.push(newProject);
   safeSet(projects);
@@ -49,11 +47,6 @@ export function deleteProject(id) {
   safeSet(projects);
 }
 
-
-/* =========================
-   TASK ↔ PROJECT MAPPING (FIXED)
-   ========================= */
-
 export function enrichTasksWithProject(tasks = []) {
   let storedMap = {};
 
@@ -62,37 +55,35 @@ export function enrichTasksWithProject(tasks = []) {
   } catch {}
 
   const projects = getProjects();
-  if (projects.length === 0) return tasks; // Safety check
+  if (projects.length === 0) return tasks; 
 
   const enriched = tasks.map(task => {
-    // 1. If task ALREADY has a projectId (from manual creation), use it.
+   
     if (task.projectId) {
-        // Ensure we save this mapping so it persists if we reload
+        
         if (!storedMap[task.id]) {
             storedMap[task.id] = task.projectId;
         }
         return task;
     }
 
-    // 2. If we already mapped this task automatically before, use that.
+   
     if (storedMap[task.id]) {
       return { ...task, projectId: storedMap[task.id] };
     }
 
-    // 3. Fallback: Assign to a random default project (Round Robin)
-    // Use modulo logic only for old dummy tasks without IDs
+
     const numericId = Number(task.id);
-    // If ID is not a number (UUID), default to first project
+   
     const projectIndex = !isNaN(numericId) ? numericId % projects.length : 0;
     const assignedProjectId = projects[projectIndex]?.id || projects[0].id;
 
-    // Save this new mapping
+    
     storedMap[task.id] = assignedProjectId;
 
     return { ...task, projectId: assignedProjectId };
   });
 
-  // Save updated mappings back to localStorage
   try {
     localStorage.setItem(TASK_PROJECTS_KEY, JSON.stringify(storedMap));
   } catch {}

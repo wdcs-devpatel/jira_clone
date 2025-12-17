@@ -136,13 +136,15 @@ export default function KanbanBoard() {
                       >
                         <Pencil size={14} />
                       </button>
+                      
                       <button
                         onClick={() => handleDelete(task.id)}
-                        className="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-red-600 transition-all"
+                        className="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-800 text-slate-400 hover:bg-red-500 hover:text-white hover:shadow-lg hover:shadow-red-500/30 active:scale-95 transition-all duration-200"
                         title="Delete"
                       >
                         <Trash2 size={14} />
                       </button>
+                      
                     </div>
                   </div>
                 </div>

@@ -52,7 +52,6 @@ export default function Signup() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-black p-4">
       <div className="w-full max-w-lg bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden">
         
-        {/* Header */}
         <div className="bg-slate-900/50 p-6 text-center border-b border-slate-700/50">
           <h2 className="text-2xl font-bold text-white flex items-center justify-center gap-2">
             <UserPlus className="text-indigo-400" />
@@ -64,7 +63,6 @@ export default function Signup() {
         <div className="p-8">
           <form onSubmit={handleSignup} className="space-y-4">
             
-            {/* Name Row */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-300 ml-1 uppercase">First Name</label>
@@ -86,7 +84,6 @@ export default function Signup() {
               </div>
             </div>
 
-            {/* Username & Phone */}
             <div className="space-y-1">
               <label className="text-xs font-medium text-slate-300 ml-1 uppercase">Username</label>
               <div className="relative">

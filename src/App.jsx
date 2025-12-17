@@ -1,8 +1,7 @@
 import { Routes, Route, useLocation } from "react-router-dom";
-
+import { AuthProvider } from "./context/AuthContext";
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
-
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
@@ -17,7 +16,7 @@ export default function App() {
     location.pathname === "/" || location.pathname === "/signup";
 
   return (
-    <>
+    <AuthProvider>
       {!hideNavbar && <Navbar />}
 
       <Routes>
@@ -60,6 +59,6 @@ export default function App() {
           }
         />
       </Routes>
-    </>
+    </AuthProvider>
   );
 }
