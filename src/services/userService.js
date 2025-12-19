@@ -1,5 +1,7 @@
-import { API_BASE } from "./api";
+const API_BASE = "https://dummyjson.com";
 
-export function getUsers() {
-  return fetch(`${API_BASE}/users`).then(res => res.json());
+export async function getUsers() {
+  const res = await fetch(`${API_BASE}/users`);
+  const data = await res.json();
+  return data.users || [];
 }

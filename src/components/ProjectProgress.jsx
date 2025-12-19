@@ -1,21 +1,24 @@
 export default function ProjectProgress({ tasks }) {
   const total = tasks.length;
-  const completed = tasks.filter(t => t.completed).length;
+  const completed = tasks.filter(t => t.status === 'done').length;
   const percent = total ? Math.round((completed / total) * 100) : 0;
 
   return (
     <div className="mt-3">
-      <div className="w-full bg-gray-700 rounded h-2">
+      <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
         <div
-          className="bg-green-500 h-2 rounded"
+          className="bg-emerald-500 h-full rounded-full transition-all duration-500"
           style={{ width: `${percent}%` }}
         />
       </div>
-      <p className="text-xs text-gray-400 mt-1">
-        {percent}% completed
-      </p>
+      <div className="flex justify-between items-center mt-1.5">
+        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+          {percent}% completed
+        </p>
+        <p className="text-xs text-slate-400">
+          {completed}/{total} tasks
+        </p>
+      </div>
     </div>
   );
 }
-
-    

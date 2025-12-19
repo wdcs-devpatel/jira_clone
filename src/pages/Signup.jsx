@@ -110,7 +110,6 @@ export default function Signup() {
               </div>
             </div>
 
-            {/* Passwords */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-300 ml-1 uppercase">Password</label>
