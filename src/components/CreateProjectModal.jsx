@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "../context/AuthContext";
 import {
   addProject,
   updateProject,
@@ -10,6 +11,7 @@ export default function CreateProjectModal({
   onSaved,
   editingProject,
 }) {
+  const { token } = useAuth();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
 
@@ -22,16 +24,17 @@ export default function CreateProjectModal({
 
   function handleSubmit(e) { 
     e.preventDefault();
-    if (!name.trim()) return;   
+    if (!name.trim() || !token) return;   
+
     if (editingProject) {
-      updateProject(editingProject.id, { name, description });
+      updateProject(editingProject.id, { name, description }, token);
     } else {
       const id = name
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, "");
 
-      addProject({ id, name, description });
+      addProject({ id, name, description }, token);
     }
 
     onSaved();

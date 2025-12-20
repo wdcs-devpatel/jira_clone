@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import KanbanBoard from "./pages/KanbanBoard";
 import TaskList from "./pages/TaskList";
 import TeamMembers from "./pages/TeamMembers";
+import Profile from "./pages/Profile";
 
 export default function App() {
   const location = useLocation();
@@ -36,6 +37,10 @@ export default function App() {
           <Route 
             path="/team" 
             element={<ProtectedRoute><TeamMembers /></ProtectedRoute>} 
+          />
+          <Route 
+            path="/profile" 
+            element={<ProtectedRoute><Profile /></ProtectedRoute>} 
           />
         </Routes>
       </ThemeProvider>

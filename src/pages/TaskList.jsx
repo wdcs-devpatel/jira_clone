@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { getAllTasks } from "../services/taskService";
 import { enrichTasksWithProject, getProjects } from "../utils/projectHelper";
 import Modal from "../components/Modal";
@@ -7,6 +8,7 @@ import TaskDetails from "./TaskDetails";
 import { CheckCircle2, Circle, Clock, ClipboardList } from "lucide-react"; 
 
 export default function TaskList() {
+  const { token } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -14,14 +16,19 @@ export default function TaskList() {
   const location = useLocation();
 
   async function loadTasks() {
+    if (!token) return;
+    
+    setLoading(true);
     try {
-      const raw = await getAllTasks();
-      const enriched = enrichTasksWithProject(raw);
-      const currentProjects = getProjects();
+      const raw = await getAllTasks(token);
+      const enriched = enrichTasksWithProject(raw, token);
+      const currentProjects = getProjects(token);
+      
       const validProjectIds = currentProjects.map(p => p.id);
       const validTasks = enriched.filter(t => validProjectIds.includes(t.projectId));
       setTasks(validTasks);
-    } catch {
+    } catch (error) {
+      console.error("Failed to load tasks:", error);
       setTasks([]);
     } finally {
       setLoading(false);
@@ -29,8 +36,10 @@ export default function TaskList() {
   }
 
   useEffect(() => {
-    loadTasks();
-  }, [location.pathname]);
+    if (token) {
+      loadTasks();
+    }
+  }, [location.pathname, token]);
 
   const getStatusConfig = (status) => {
     switch (status) {
@@ -65,7 +74,6 @@ export default function TaskList() {
 
   return (
     <div className="p-8 min-h-screen font-sans antialiased selection:bg-indigo-500/30">
-      
       <div className="max-w-6xl mx-auto">
         <div className="mb-8 flex items-end justify-between border-b border-slate-200 dark:border-slate-800 pb-6">
           <div>
@@ -91,7 +99,6 @@ export default function TaskList() {
           <div className="divide-y divide-slate-100 dark:divide-slate-800/50">
             {tasks.map((task) => {
               const statusConfig = getStatusConfig(task.status);
-
               return (
                 <div
                   key={task.id}
@@ -103,13 +110,11 @@ export default function TaskList() {
                       {task.title}
                     </p>
                   </div>
-
                   <div className="col-span-4 md:col-span-3">
                     <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-mono font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-indigo-300 border border-slate-200 dark:border-slate-700/50">
                       {task.projectId}
                     </span>
                   </div>
-
                   <div className="col-span-2 flex justify-end md:justify-start">
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border ${statusConfig.style}`}>
                       {statusConfig.icon}

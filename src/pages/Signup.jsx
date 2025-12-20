@@ -62,10 +62,9 @@ export default function Signup() {
 
         <div className="p-8">
           <form onSubmit={handleSignup} className="space-y-4">
-            
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-300 ml-1 uppercase">First Name</label>
+                <label className="text-xs font-medium text-slate-300 ml-1 uppercase tracking-wider">First Name</label>
                 <input
                   name="firstName"
                   onChange={handleChange}
@@ -74,7 +73,7 @@ export default function Signup() {
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-300 ml-1 uppercase">Last Name</label>
+                <label className="text-xs font-medium text-slate-300 ml-1 uppercase tracking-wider">Last Name</label>
                 <input
                   name="lastName"
                   onChange={handleChange}
@@ -85,7 +84,7 @@ export default function Signup() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300 ml-1 uppercase">Username</label>
+              <label className="text-xs font-medium text-slate-300 ml-1 uppercase tracking-wider">Username</label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
                 <input
@@ -98,7 +97,7 @@ export default function Signup() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300 ml-1 uppercase">Phone</label>
+              <label className="text-xs font-medium text-slate-300 ml-1 uppercase tracking-wider">Phone</label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
                 <input
@@ -112,7 +111,7 @@ export default function Signup() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-300 ml-1 uppercase">Password</label>
+                <label className="text-xs font-medium text-slate-300 ml-1 uppercase tracking-wider">Password</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
                   <input
@@ -125,7 +124,7 @@ export default function Signup() {
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-300 ml-1 uppercase">Confirm</label>
+                <label className="text-xs font-medium text-slate-300 ml-1 uppercase tracking-wider">Confirm</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
                   <input
@@ -146,7 +145,7 @@ export default function Signup() {
               </div>
             )}
 
-            <button className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-600/20 transition-all active:scale-[0.98] mt-4">
+            <button className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl shadow-lg transition-all active:scale-[0.98] mt-4">
               Create Account
             </button>
           </form>

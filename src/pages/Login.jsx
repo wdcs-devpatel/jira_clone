@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { loginUser } from "../services/authService";
 import { User, Lock, LogIn, AlertCircle } from "lucide-react";
 
 export default function Login() {
+  const { login } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -17,20 +19,22 @@ export default function Login() {
 
     try {
       await new Promise(resolve => setTimeout(resolve, 500));
-
       const localUsers = JSON.parse(localStorage.getItem("localUsers")) || [];
-      const localUser = localUsers.find(
-        (u) => u.username === username && u.password === password
-      );
+      const localUser = localUsers.find(u => u.username === username && u.password === password);
 
       if (localUser) {
-        localStorage.setItem("token", "local-auth");
+        login(`local-auth-${username}`, localUser); 
         navigate("/dashboard");
         return;
       }
 
       const data = await loginUser(username, password);
-      localStorage.setItem("token", data.accessToken);
+      login(data.accessToken, { 
+        firstName: data.firstName || "Demo", 
+        lastName: data.lastName || "User", 
+        username: username,
+        phone: "Not provided" 
+      }); 
       navigate("/dashboard");
     } catch {
       setError("Invalid username or password");
@@ -42,7 +46,6 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-black p-4">
       <div className="w-full max-w-md bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden">
-        
         <div className="p-8 pb-0 text-center">
           <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/30">
             <LogIn className="text-white" size={24} />
@@ -53,13 +56,12 @@ export default function Login() {
 
         <div className="p-8 pt-6">
           <form onSubmit={handleLogin} className="space-y-5">
-            
             <div className="space-y-1">
               <label className="text-sm font-medium text-slate-300 ml-1">Username</label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                 <input
-                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900/50 border border-slate-700 text-white focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
                   placeholder="Enter your username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
@@ -74,7 +76,7 @@ export default function Login() {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                 <input
                   type="password"
-                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900/50 border border-slate-700 text-white focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -90,10 +92,7 @@ export default function Login() {
               </div>
             )}
 
-            <button 
-              disabled={isLoading}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-xl shadow-lg shadow-indigo-600/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed mt-2"
-            >
+            <button disabled={isLoading} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-50">
               {isLoading ? "Signing In..." : "Sign In"}
             </button>
           </form>
@@ -108,12 +107,6 @@ export default function Login() {
                 Create Account
               </button>
             </p>
-
-            <div className="mt-6 inline-block px-4 py-2 rounded-full bg-slate-900/50 border border-slate-700">
-              <p className="text-xs text-slate-400 font-mono">
-                Demo: <span className="text-indigo-400">emilys</span> / <span className="text-indigo-400">emilyspass</span>
-              </p>
-            </div>
           </div>
         </div>
       </div>

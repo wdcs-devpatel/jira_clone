@@ -17,4 +17,4 @@ export default function KanbanColumn({ title, tasks }) {
       </div>
     </div>
   );
-}
+} 

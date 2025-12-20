@@ -1,25 +1,32 @@
-const STORAGE_KEY = "jira_tasks";
+export const API_BASE = "https://dummyjson.com";
 
-function safeGet() {
+function getTaskKey(token) {
+  return token ? `jira_tasks_${token}` : null;
+}
+
+function safeGet(token) {
   try {
-    const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    const key = getTaskKey(token);
+    if (!key) return [];
+    const data = JSON.parse(localStorage.getItem(key));
     return Array.isArray(data) ? data : [];
   } catch {
     return [];
   }
 }
 
-function safeSet(data) {
+function safeSet(data, token) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    const key = getTaskKey(token);
+    if (key) localStorage.setItem(key, JSON.stringify(data));
   } catch {}
 }
 
-export async function getAllTasks() {
-  const cached = safeGet();
+export async function getAllTasks(token) {
+  const cached = safeGet(token);
   if (cached.length > 0) return cached;
 
-  const res = await fetch("https://dummyjson.com/todos?limit=30");
+  const res = await fetch(`${API_BASE}/todos?limit=30`);
   const data = await res.json();
 
   const tasks = data.todos.map((t) => ({
@@ -29,13 +36,12 @@ export async function getAllTasks() {
     status: t.completed ? "done" : "todo"
   }));
 
-  safeSet(tasks);
+  safeSet(tasks, token);
   return tasks;
 }
 
-export async function addTask(task) {
-  const tasks = safeGet();
-
+export async function addTask(task, token) {
+  const tasks = safeGet(token);
   const newTask = {
     id: Date.now(),
     title: task.title,
@@ -43,52 +49,40 @@ export async function addTask(task) {
     projectId: task.projectId,
     userId: task.userId || 1
   };
-
   const updated = [...tasks, newTask];
-  safeSet(updated);
+  safeSet(updated, token);
   return newTask;
 }
 
-export async function updateTask(taskId, updates) {
-  const tasks = safeGet();
-
+export async function updateTask(taskId, updates, token) {
+  const tasks = safeGet(token);
   const updated = tasks.map((t) =>
     String(t.id) === String(taskId) ? { ...t, ...updates } : t
   );
-
-  safeSet(updated);
+  safeSet(updated, token);
   return updated;
 }
 
-export function updateTaskStatus(taskId, status) {
-  const tasks = safeGet();
-
+export function updateTaskStatus(taskId, status, token) {
+  const tasks = safeGet(token);
   const updated = tasks.map((t) =>
     String(t.id) === String(taskId) ? { ...t, status } : t
   );
-
-  safeSet(updated);
+  safeSet(updated, token);
   return updated;
 }
 
-export async function deleteTask(taskId) {
-  const tasks = safeGet();
-
-  const updated = tasks.filter(
-    (t) => String(t.id) !== String(taskId)
-  );
-
-  safeSet(updated);
+export async function deleteTask(taskId, token) {
+  const tasks = safeGet(token);
+  const updated = tasks.filter((t) => String(t.id) !== String(taskId));
+  safeSet(updated, token);
   return updated;
 }
 
 export async function getTaskComments(taskId) {
   if (Number(taskId) > 10000) return [];
-
   try {
-    const res = await fetch(
-      `https://dummyjson.com/comments/post/${taskId}`
-    );
+    const res = await fetch(`${API_BASE}/comments/post/${taskId}`);
     const data = await res.json();
     return data.comments || [];
   } catch {
