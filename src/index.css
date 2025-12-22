@@ -1,25 +1,25 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+  @tailwind base;
+  @tailwind components;
+  @tailwind utilities;
 
-@layer base {
-  body {
-    @apply bg-slate-50 text-slate-900 transition-all duration-300 antialiased;
+  @layer base {
+    body {
+      @apply bg-slate-50 text-slate-900 transition-all duration-300 antialiased;
+    }
+
+    .dark body {
+      @apply bg-[#0f172a] text-slate-100;
+      background-image: linear-gradient(to bottom right, #0f172a, #111827, #020617);
+      background-attachment: fixed;
+    }
   }
 
-  .dark body {
-    @apply bg-[#0f172a] text-slate-100;
-    background-image: linear-gradient(to bottom right, #0f172a, #111827, #020617);
-    background-attachment: fixed;
+  .dark ::-webkit-scrollbar {
+    width: 10px;
   }
-}
-
-.dark ::-webkit-scrollbar {
-  width: 10px;
-}
-.dark ::-webkit-scrollbar-track {
-  @apply bg-slate-900;
-}
-.dark ::-webkit-scrollbar-thumb {
-  @apply bg-slate-700 rounded-full border-2 border-slate-900;
-}
+  .dark ::-webkit-scrollbar-track {
+    @apply bg-slate-900;
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    @apply bg-slate-700 rounded-full border-2 border-slate-900;
+  }

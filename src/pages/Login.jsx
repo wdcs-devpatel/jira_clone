@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import { useAuth } from "../context/AuthContext";
 import { loginUser } from "../services/authService";
 import { User, Lock, LogIn, AlertCircle } from "lucide-react";
@@ -24,6 +25,7 @@ export default function Login() {
 
       if (localUser) {
         login(`local-auth-${username}`, localUser); 
+        toast.success(`Welcome back, ${localUser.firstName}!`);
         navigate("/dashboard");
         return;
       }
@@ -35,9 +37,12 @@ export default function Login() {
         username: username,
         phone: "Not provided" 
       }); 
+      toast.success("Login successful!");
       navigate("/dashboard");
-    } catch {
-      setError("Invalid username or password");
+    } catch (err) {
+      const errorMessage = "Invalid username or password";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -92,7 +97,10 @@ export default function Login() {
               </div>
             )}
 
-            <button disabled={isLoading} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-50">
+            <button 
+              disabled={isLoading} 
+              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-50"
+            >
               {isLoading ? "Signing In..." : "Sign In"}
             </button>
           </form>

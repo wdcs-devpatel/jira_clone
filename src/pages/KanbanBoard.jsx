@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Plus, Pencil, Trash2, X, ArrowLeft } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowLeft, Check } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { getAllTasks, addTask, updateTask, deleteTask, updateTaskStatus } from "../services/taskService";
+import { getUsers } from "../services/userService";
 import { enrichTasksWithProject } from "../utils/projectHelper";
+import { PRIORITIES, PRIORITY_LIST } from "../utils/constants";
 
 const COLUMNS = [
   { key: "todo", title: "To Do" },
@@ -15,97 +17,133 @@ export default function KanbanBoard() {
   const { projectId } = useParams();
   const { token } = useAuth();
   const [tasks, setTasks] = useState([]);
+  const [users, setUsers] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [title, setTitle] = useState("");
+  const [priority, setPriority] = useState("medium");
+  const [assigneeId, setAssigneeId] = useState(null);
   const [targetStatus, setTargetStatus] = useState("todo");
 
   useEffect(() => {
-    if (token) loadTasks();
+    if (token) loadInitialData();
   }, [projectId, token]);
 
-  async function loadTasks() {
-    try {
-      const all = await getAllTasks(token);
-      const enriched = enrichTasksWithProject(all, token);
-      setTasks(enriched.filter(t => String(t.projectId) === String(projectId)));
-    } catch (error) {
-      console.error(error);
-    }
+  async function loadInitialData() {
+    const fetchedUsers = await getUsers();
+    setUsers(fetchedUsers);
+    await loadTasks();
   }
+
+  async function loadTasks() {
+    const all = await getAllTasks(token);
+    const enriched = enrichTasksWithProject(all, token);
+    setTasks(enriched.filter(t => String(t.projectId) === String(projectId)));
+  }
+
+  const handleDragStart = (e, taskId) => { e.dataTransfer.setData("taskId", taskId); };
+  const onDragOver = (e) => { e.preventDefault(); };
+
+  const onDrop = async (e, newStatus) => {
+    e.preventDefault();
+    const taskId = e.dataTransfer.getData("taskId");
+    if (taskId && token) {
+      await updateTaskStatus(taskId, newStatus, token);
+      loadTasks(); 
+    }
+  };
 
   async function handleSave() {
     if (!title.trim()) return;
+    const taskData = { title, status: targetStatus, priority, projectId, assigneeId };
+    
     if (editingTask) {
-      await updateTask(editingTask.id, { title, status: targetStatus, projectId }, token);
+      await updateTask(editingTask.id, taskData, token);
     } else {
-      await addTask({ title, status: targetStatus, projectId }, token);
+      await addTask(taskData, token);
     }
     setShowModal(false);
     loadTasks();
   }
 
-  async function handleDelete(taskId) {
-    if (!confirm("Delete this task?")) return;
-    await deleteTask(taskId, token);
-    loadTasks();
-  }
-
-  async function onDrop(e, status) {
-    e.preventDefault();
-    const droppedId = e.dataTransfer.getData("taskId");
-    await updateTaskStatus(droppedId, status, token);
-    loadTasks();
-  }
-
-  if (!token) return null;
-
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
-      <Link to="/dashboard" className="text-slate-500 hover:text-indigo-600 flex items-center gap-2 mb-4 text-sm font-medium">
+    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6 tracking-tight">
+      <Link to="/dashboard" className="text-slate-500 hover:text-indigo-600 flex items-center gap-2 mb-4 text-sm font-medium transition-colors">
         <ArrowLeft size={16} /> Back to Dashboard
       </Link>
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-        Board: <span className="text-indigo-600 dark:text-indigo-400 font-mono">{projectId}</span>
-      </h1>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {COLUMNS.map(col => (
-          <div key={col.key} onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop(e, col.key)} className="bg-slate-100 dark:bg-slate-800/60 rounded-2xl p-4 min-h-[500px] border border-slate-200 dark:border-slate-700 shadow-inner">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="font-bold uppercase text-xs tracking-widest text-slate-500 dark:text-slate-200">{col.title}</h2>
-              <button onClick={() => { setEditingTask(null); setTitle(""); setTargetStatus(col.key); setShowModal(true); }} className="text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 p-1 rounded-lg transition-colors"><Plus size={20} /></button>
+          <div key={col.key} onDragOver={onDragOver} onDrop={(e) => onDrop(e, col.key)} className="bg-slate-50 dark:bg-slate-800/40 rounded-3xl p-5 min-h-[500px] border border-slate-200 dark:border-slate-700/50">
+            <div className="flex justify-between items-center mb-8 px-2">
+              <h2 className="font-black uppercase text-[10px] tracking-[0.2em] text-slate-400 dark:text-slate-500">{col.title}</h2>
+              <button onClick={() => { setEditingTask(null); setTitle(""); setPriority("medium"); setAssigneeId(users[0]?.id); setTargetStatus(col.key); setShowModal(true); }} className="bg-white dark:bg-slate-700 text-indigo-600 p-1.5 rounded-xl shadow-sm border border-slate-100 dark:border-slate-600"><Plus size={18} /></button>
             </div>
-            <div className="space-y-3">
-              {tasks.filter(t => t.status === col.key).map(task => (
-                <div key={task.id} draggable onDragStart={(e) => e.dataTransfer.setData("taskId", task.id)} className="bg-white dark:bg-slate-700/60 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-600 group hover:ring-2 hover:ring-indigo-500/50 transition-all">
-                  <div className="flex justify-between items-start">
-                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{task.title}</p>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => { setEditingTask(task); setTitle(task.title); setTargetStatus(task.status); setShowModal(true); }} className="p-1 hover:text-indigo-600"><Pencil size={14} /></button>
-                      <button onClick={() => handleDelete(task.id)} className="p-1 hover:text-red-500"><Trash2 size={14} /></button>
+
+            <div className="space-y-4">
+              {tasks.filter(t => t.status === col.key).map(task => {
+                const p = PRIORITIES[task.priority] || PRIORITIES.medium;
+                const assignee = users.find(u => u.id === Number(task.assigneeId)) || users[0];
+                return (
+                  <div key={task.id} draggable onDragStart={(e) => handleDragStart(e, task.id)} className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 group hover:border-indigo-400 transition-all cursor-grab active:cursor-grabbing">
+                    <div className="flex justify-between items-start mb-3">
+                      <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg ${p.bg} ${p.color}`}>
+                        {p.label}
+                      </span>
+                      <button onClick={() => { setEditingTask(task); setTitle(task.title); setPriority(task.priority || "medium"); setAssigneeId(task.assigneeId); setTargetStatus(task.status); setShowModal(true); }} className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 transition-all"><Pencil size={14} /></button>
+                    </div>
+                    <p className="text-sm font-bold text-slate-800 dark:text-slate-100 mb-6">{task.title}</p>
+                    <div className="flex justify-between items-center border-t border-slate-50 dark:border-slate-700 pt-4">
+                      <span className="text-[9px] font-mono text-slate-300 font-bold">ID: {String(task.id).slice(0, 8)}</span>
+                      <img src={assignee?.avatar} alt={assignee?.name} className="w-7 h-7 rounded-full border-2 border-white dark:border-slate-600 shadow-sm" />
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
-            {tasks.filter(t => t.status === col.key).length === 0 && (
-                <div className="flex items-center justify-center h-24 text-slate-400 dark:text-slate-600 text-xs font-medium border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl mt-2">
-                    Empty Column
-                </div>
-            )}
           </div>
         ))}
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 dark:border-slate-800">
-            <h2 className="text-xl font-bold mb-6 text-slate-900 dark:text-white">{editingTask ? "Edit Task" : "Add Task"}</h2>
-            <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Task title..." className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 mb-6 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setShowModal(false)} className="px-5 py-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">Cancel</button>
-              <button onClick={handleSave} className="px-6 py-2 bg-indigo-600 text-white rounded-xl shadow-lg hover:bg-indigo-500 transition-all active:scale-95">Save</button>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[100] p-4">
+          <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl w-full max-w-md border border-slate-200 dark:border-slate-800 shadow-2xl animate-in fade-in zoom-in-95">
+            <h2 className="text-2xl font-black mb-8 text-slate-900 dark:text-white">{editingTask ? "Edit Task" : "New Task"}</h2>
+            <div className="space-y-6">
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 tracking-[0.2em]">Task Title</label>
+                <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-5 py-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-300" />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 tracking-[0.2em]">Assignee Name</label>
+                <div className="max-h-[160px] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                  {users.map((u) => (
+                    <button key={u.id} onClick={() => setAssigneeId(u.id)} className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all ${assigneeId === u.id ? "border-indigo-600 bg-indigo-50/50 text-indigo-600" : "border-slate-100 dark:border-slate-800 text-slate-500 hover:bg-slate-50"}`}>
+                      <div className="flex items-center gap-3">
+                        <img src={u.avatar} className="w-6 h-6 rounded-full" />
+                        <span className="text-xs font-bold">{u.name}</span>
+                      </div>
+                      {assigneeId === u.id && <Check size={14} />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 tracking-[0.2em]">Priority</label>
+                <div className="grid grid-cols-3 gap-3">
+                  {PRIORITY_LIST.map((p) => (
+                    <button key={p.value} onClick={() => setPriority(p.value)} className={`py-3 rounded-2xl border text-[11px] font-black tracking-widest uppercase transition-all ${priority === p.value ? "border-indigo-600 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20" : "border-slate-100 dark:border-slate-800 text-slate-400"}`}>
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end items-center gap-4 mt-10">
+              <button onClick={() => setShowModal(false)} className="px-6 py-2 text-sm font-bold text-slate-400">Cancel</button>
+              <button onClick={handleSave} className="px-10 py-3 bg-indigo-600 text-white rounded-2xl shadow-xl hover:bg-indigo-500 transition-all font-black text-xs uppercase tracking-widest">Save Changes</button>
             </div>
           </div>
         </div>

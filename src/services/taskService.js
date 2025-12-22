@@ -1,4 +1,4 @@
-export const API_BASE = "https://dummyjson.com";
+import { API_BASE } from "../utils/constants";
 
 function getTaskKey(token) {
   return token ? `jira_tasks_${token}` : null;
@@ -10,9 +10,7 @@ function safeGet(token) {
     if (!key) return [];
     const data = JSON.parse(localStorage.getItem(key));
     return Array.isArray(data) ? data : [];
-  } catch {
-    return [];
-  }
+  } catch { return []; }
 }
 
 function safeSet(data, token) {
@@ -28,12 +26,15 @@ export async function getAllTasks(token) {
 
   const res = await fetch(`${API_BASE}/todos?limit=30`);
   const data = await res.json();
+  const priorityKeys = ["high", "medium", "low"]; 
 
-  const tasks = data.todos.map((t) => ({
-    id: t.id,
+  const tasks = data.todos.map((t, index) => ({
+    id: String(t.id),
     title: t.todo,
     userId: t.userId,
-    status: t.completed ? "done" : "todo"
+    status: t.completed ? "done" : "todo",
+    priority: priorityKeys[Math.floor(Math.random() * priorityKeys.length)],
+    assigneeId: (index % 10) + 1 
   }));
 
   safeSet(tasks, token);
@@ -42,13 +43,19 @@ export async function getAllTasks(token) {
 
 export async function addTask(task, token) {
   const tasks = safeGet(token);
+  
+  const lastAssigneeId = tasks.length > 0 ? tasks[tasks.length - 1].assigneeId : 0;
+  const nextAssigneeId = task.assigneeId || (Number(lastAssigneeId) % 10) + 1;
+
   const newTask = {
-    id: Date.now(),
+    id: `TASK-${Date.now()}`,
     title: task.title,
     status: task.status || "todo",
+    priority: task.priority || "medium",
     projectId: task.projectId,
-    userId: task.userId || 1
+    assigneeId: nextAssigneeId 
   };
+  
   const updated = [...tasks, newTask];
   safeSet(updated, token);
   return newTask;
@@ -80,7 +87,7 @@ export async function deleteTask(taskId, token) {
 }
 
 export async function getTaskComments(taskId) {
-  if (Number(taskId) > 10000) return [];
+  if (String(taskId).startsWith("TASK-")) return [];
   try {
     const res = await fetch(`${API_BASE}/comments/post/${taskId}`);
     const data = await res.json();

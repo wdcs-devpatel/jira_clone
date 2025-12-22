@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getAllTasks } from "../services/taskService";
 import { enrichTasksWithProject, getProjects } from "../utils/projectHelper";
+import { PRIORITIES } from "../utils/constants"; //
 import Modal from "../components/Modal";
 import TaskDetails from "./TaskDetails";
 import { CheckCircle2, Circle, Clock, ClipboardList } from "lucide-react"; 
@@ -26,7 +27,13 @@ export default function TaskList() {
       
       const validProjectIds = currentProjects.map(p => p.id);
       const validTasks = enriched.filter(t => validProjectIds.includes(t.projectId));
-      setTasks(validTasks);
+      
+      const priorityOrder = { high: 1, medium: 2, low: 3 };
+      const sortedTasks = validTasks.sort((a, b) => 
+        (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2)
+      );
+
+      setTasks(sortedTasks);
     } catch (error) {
       console.error("Failed to load tasks:", error);
       setTasks([]);
@@ -90,31 +97,45 @@ export default function TaskList() {
         </div>
 
         <div className="bg-white dark:bg-slate-900/50 backdrop-blur-sm rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-xl">
+          {/* Header Row: Added Priority */}
           <div className="grid grid-cols-12 px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800">
-            <div className="col-span-6 md:col-span-7">Task Title</div>
-            <div className="col-span-4 md:col-span-3">Project ID</div>
+            <div className="col-span-5 md:col-span-6">Task Title</div>
+            <div className="col-span-2">Priority</div> {/* New Priority Column */}
+            <div className="col-span-3 md:col-span-2">Project ID</div>
             <div className="col-span-2 text-right md:text-left">Status</div>
           </div>
 
           <div className="divide-y divide-slate-100 dark:divide-slate-800/50">
             {tasks.map((task) => {
               const statusConfig = getStatusConfig(task.status);
+              // Priority configuration for styling
+              const p = PRIORITIES[task.priority] || PRIORITIES.medium; 
+
               return (
                 <div
                   key={task.id}
                   onClick={() => setSelectedTask(task)}
                   className="grid grid-cols-12 px-6 py-4 items-center hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-all duration-200 group"
                 >
-                  <div className="col-span-6 md:col-span-7 pr-4">
+                  <div className="col-span-5 md:col-span-6 pr-4">
                     <p className="text-sm font-medium text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-white transition-colors truncate">
                       {task.title}
                     </p>
                   </div>
-                  <div className="col-span-4 md:col-span-3">
+
+                  {/* Priority Column Implementation */}
+                  <div className="col-span-2">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${p.bg} ${p.color} ${p.darkBg} ${p.darkText}`}>
+                      {p.label}
+                    </span>
+                  </div>
+
+                  <div className="col-span-3 md:col-span-2">
                     <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-mono font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-indigo-300 border border-slate-200 dark:border-slate-700/50">
                       {task.projectId}
                     </span>
                   </div>
+                  
                   <div className="col-span-2 flex justify-end md:justify-start">
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border ${statusConfig.style}`}>
                       {statusConfig.icon}
