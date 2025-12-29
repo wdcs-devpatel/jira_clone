@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getAllTasks } from "../services/taskService";
 import { enrichTasksWithProject, getProjects } from "../utils/projectHelper";
-import { PRIORITIES } from "../utils/constants"; //
+import { PRIORITIES } from "../utils/constants";
 import Modal from "../components/Modal";
 import TaskDetails from "./TaskDetails";
 import { CheckCircle2, Circle, Clock, ClipboardList } from "lucide-react"; 
@@ -13,29 +13,32 @@ export default function TaskList() {
   const [tasks, setTasks] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
   const [loading, setLoading] = useState(true);
-
   const location = useLocation();
+
+  const projectMap = useMemo(() => {
+    const allProjects = getProjects(token);
+    return allProjects.reduce((acc, p) => { 
+      acc[String(p.id)] = p.name;
+      return acc;
+    }, {}); 
+  }, [token]);
 
   async function loadTasks() {
     if (!token) return;
-    
-    setLoading(true);
+    setLoading(true);   
     try {
       const raw = await getAllTasks(token);
       const enriched = enrichTasksWithProject(raw, token);
       const currentProjects = getProjects(token);
-      
-      const validProjectIds = currentProjects.map(p => p.id);
-      const validTasks = enriched.filter(t => validProjectIds.includes(t.projectId));
-      
+      const validProjectIds = currentProjects.map(p => String(p.id));
+      const validTasks = enriched.filter(t => validProjectIds.includes(String(t.projectId)));
       const priorityOrder = { high: 1, medium: 2, low: 3 };
       const sortedTasks = validTasks.sort((a, b) => 
         (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2)
       );
-
       setTasks(sortedTasks);
     } catch (error) {
-      console.error("Failed to load tasks:", error);
+      console.error(error);
       setTasks([]);
     } finally {
       setLoading(false);
@@ -43,9 +46,7 @@ export default function TaskList() {
   }
 
   useEffect(() => {
-    if (token) {
-      loadTasks();
-    }
+    if (token) loadTasks();
   }, [location.pathname, token]);
 
   const getStatusConfig = (status) => {
@@ -55,7 +56,7 @@ export default function TaskList() {
           label: "Done",
           style: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20",
           icon: <CheckCircle2 size={14} />,
-        };
+        };  
       case "in-progress":
         return {
           label: "In Progress",
@@ -73,14 +74,14 @@ export default function TaskList() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-[#0b1220]">
          <p className="text-slate-500 dark:text-slate-400 animate-pulse text-lg font-medium">Loading tasks…</p>
       </div>
     );
   }
 
   return (
-    <div className="p-8 min-h-screen font-sans antialiased selection:bg-indigo-500/30">
+    <div className="p-8 min-h-screen bg-slate-50 dark:bg-[#0b1220] font-sans antialiased selection:bg-indigo-500/30 transition-colors duration-300">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8 flex items-end justify-between border-b border-slate-200 dark:border-slate-800 pb-6">
           <div>
@@ -97,18 +98,16 @@ export default function TaskList() {
         </div>
 
         <div className="bg-white dark:bg-slate-900/50 backdrop-blur-sm rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-xl">
-          {/* Header Row: Added Priority */}
           <div className="grid grid-cols-12 px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800">
             <div className="col-span-5 md:col-span-6">Task Title</div>
-            <div className="col-span-2">Priority</div> {/* New Priority Column */}
-            <div className="col-span-3 md:col-span-2">Project ID</div>
+            <div className="col-span-2">Priority</div>
+            <div className="col-span-3 md:col-span-2">Project</div>
             <div className="col-span-2 text-right md:text-left">Status</div>
           </div>
 
           <div className="divide-y divide-slate-100 dark:divide-slate-800/50">
             {tasks.map((task) => {
               const statusConfig = getStatusConfig(task.status);
-              // Priority configuration for styling
               const p = PRIORITIES[task.priority] || PRIORITIES.medium; 
 
               return (
@@ -123,7 +122,6 @@ export default function TaskList() {
                     </p>
                   </div>
 
-                  {/* Priority Column Implementation */}
                   <div className="col-span-2">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${p.bg} ${p.color} ${p.darkBg} ${p.darkText}`}>
                       {p.label}
@@ -132,7 +130,7 @@ export default function TaskList() {
 
                   <div className="col-span-3 md:col-span-2">
                     <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-mono font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-indigo-300 border border-slate-200 dark:border-slate-700/50">
-                      {task.projectId}
+                      {projectMap[String(task.projectId)] || task.projectId}
                     </span>
                   </div>
                   

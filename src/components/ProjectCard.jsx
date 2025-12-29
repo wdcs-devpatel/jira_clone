@@ -6,21 +6,32 @@ export default function ProjectCard({ project, onEdit, onDelete }) {
   const navigate = useNavigate();
   const p = PRIORITIES[project.priority] || PRIORITIES.medium;
 
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    onDelete(project.id);
+  };
+
   return (
     <div
       className="group relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 hover:shadow-lg transition-all cursor-pointer flex flex-col h-full"
       onClick={() => navigate(`/kanban/${project.id}`)}
-    >
+      >
       <div className="flex justify-between items-start mb-2">
         <h3 className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">
           {project.name}
         </h3>
         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-          <button onClick={() => onEdit(project)} className="p-2 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors">
-            <Pencil size={16} />
+          <button 
+            onClick={() => onEdit(project)} 
+            className="p-2 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors"
+          >
+            <Pencil size={13} />
           </button>
-          <button onClick={() => onDelete(project.id)} className="p-2 rounded-lg text-slate-400 hover:text-red-600 transition-colors">
-            <Trash2 size={16} />
+          <button 
+            onClick={handleDelete} 
+            className="p-2 rounded-lg text-slate-400 hover:text-red-600 transition-colors"
+          >
+            <Trash2 size={16} />  
           </button>
         </div>
       </div>

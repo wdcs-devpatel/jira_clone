@@ -13,3 +13,21 @@ export async function getUsers() {
     return [];
   }
 }
+
+export async function updateProfile(userId, profileData) {
+  try {
+    if (!userId) throw new Error("User ID is missing. Please log out and back in.");
+    const res = await fetch(`${API_BASE}/users/${userId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(profileData),
+    });
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.message || 'Update failed');
+    }
+    return await res.json();
+  } catch (error) {
+    throw error;
+  }
+}

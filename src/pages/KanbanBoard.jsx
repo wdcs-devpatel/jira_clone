@@ -12,20 +12,20 @@ const COLUMNS = [
   { key: "in-progress", title: "In Progress" },
   { key: "done", title: "Done" },
 ];
-
+  
 export default function KanbanBoard() {
   const { projectId } = useParams();
   const { token } = useAuth();
   const [tasks, setTasks] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [showModal, setShowModal] = useState(false);
+  const [users, setUsers] = useState([]); 
+  const [showModal, setShowModal] = useState(false);  
   const [editingTask, setEditingTask] = useState(null);
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState("medium");
   const [assigneeId, setAssigneeId] = useState(null);
   const [targetStatus, setTargetStatus] = useState("todo");
 
-  useEffect(() => {
+  useEffect(() => { 
     if (token) loadInitialData();
   }, [projectId, token]);
 
@@ -66,6 +66,13 @@ export default function KanbanBoard() {
     loadTasks();
   }
 
+  async function handleDelete(taskId) {
+    if (window.confirm("Are you sure you want to delete this task?")) {
+      await deleteTask(taskId, token);
+      loadTasks();
+    }
+  }
+
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6 tracking-tight">
       <Link to="/dashboard" className="text-slate-500 hover:text-indigo-600 flex items-center gap-2 mb-4 text-sm font-medium transition-colors">
@@ -90,11 +97,18 @@ export default function KanbanBoard() {
                       <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg ${p.bg} ${p.color}`}>
                         {p.label}
                       </span>
-                      <button onClick={() => { setEditingTask(task); setTitle(task.title); setPriority(task.priority || "medium"); setAssigneeId(task.assigneeId); setTargetStatus(task.status); setShowModal(true); }} className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 transition-all"><Pencil size={14} /></button>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                        <button onClick={() => { setEditingTask(task); setTitle(task.title); setPriority(task.priority || "medium"); setAssigneeId(task.assigneeId); setTargetStatus(task.status); setShowModal(true); }} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-indigo-600 transition-all">
+                          <Pencil size={14} />
+                        </button>
+                        <button onClick={() => handleDelete(task.id)} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-slate-400 hover:text-red-600 transition-all">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
                     <p className="text-sm font-bold text-slate-800 dark:text-slate-100 mb-6">{task.title}</p>
                     <div className="flex justify-between items-center border-t border-slate-50 dark:border-slate-700 pt-4">
-                      <span className="text-[9px] font-mono text-slate-300 font-bold">ID: {String(task.id).slice(0, 8)}</span>
+                      <span className="text-[9px] font-mono text-slate-300 font-bold">ID: {String(task.id).slice(0, 10)}</span>
                       <img src={assignee?.avatar} alt={assignee?.name} className="w-7 h-7 rounded-full border-2 border-white dark:border-slate-600 shadow-sm" />
                     </div>
                   </div>

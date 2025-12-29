@@ -11,7 +11,7 @@ export default function KanbanColumn({ title, tasks }) {
             key={task.id}
             className="bg-gray-700 p-3 rounded cursor-pointer hover:bg-gray-600"
           >
-            {task.todo}
+              {task.todo}
           </div>
         ))}
       </div>
