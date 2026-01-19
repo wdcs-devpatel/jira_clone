@@ -1,7 +1,7 @@
-import React from "react";
-import { Routes, Route, useLocation, Outlet } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import ProtectedRoute from "../components/ProtectedRoute";
+
 import Login from "../pages/Login";
 import Signup from "../pages/Signup";
 import Dashboard from "../pages/Dashboard";
@@ -10,18 +10,22 @@ import TaskList from "../pages/TaskList";
 import TeamMembers from "../pages/TeamMembers";
 import Profile from "../pages/Profile";
 
-export default function AppRoutes() {
+function AppRoutes() {
   const location = useLocation();
+  // Ensure paths match exactly
   const hideNavbar = ["/", "/signup"].includes(location.pathname);
 
   return (
     <>
       {!hideNavbar && <Navbar />}
+
       <Routes>
+        {/* Public Routes */}
         <Route path="/" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
-        <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
+        {/* Protected Routes */}
+        <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/kanban/:projectId" element={<KanbanBoard />} />
           <Route path="/tasks" element={<TaskList />} />
@@ -29,8 +33,14 @@ export default function AppRoutes() {
           <Route path="/profile" element={<Profile />} />
         </Route>
 
-        <Route path="*" element={<div className="p-10 text-center">404 - Page Not Found</div>} />
+        {/* Fallback */}
+        <Route
+          path="*"
+          element={<div className="p-10 text-center text-white">404 - Page Not Found</div>}
+        />
       </Routes>
     </>
   );
 }
+
+export default AppRoutes;

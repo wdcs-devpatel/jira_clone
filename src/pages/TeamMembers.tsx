@@ -107,7 +107,7 @@ function DetailItem({ icon, label, value }) {
       <div>
         <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">{label}</p>
         <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{value || "N/A"}</p>
-      </div>
+      </div>  
     </div>
   );
 }
