@@ -18,7 +18,7 @@ interface CreateProjectModalProps {
 
 export default function CreateProjectModal({
   editingProject,
-  onClose,
+  onClose,  
   onSaved,
 }: CreateProjectModalProps) {
   const [name, setName] = useState<string>("");
@@ -46,7 +46,6 @@ export default function CreateProjectModal({
       priority 
     });
   }
-
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
       <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl w-full max-w-lg shadow-2xl border border-slate-200 dark:border-slate-800">

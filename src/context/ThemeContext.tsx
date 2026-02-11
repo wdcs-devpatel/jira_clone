@@ -22,7 +22,6 @@ interface ThemeProviderProps {
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>("dark");
 
-  // ✅ Load theme safely after mount
   useEffect(() => {
     const storedTheme = localStorage.getItem("theme");
     if (storedTheme === "light" || storedTheme === "dark") {
@@ -30,7 +29,6 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     }
   }, []);
 
-  // ✅ Apply theme + persist
   useEffect(() => {
     const root = document.documentElement;
 

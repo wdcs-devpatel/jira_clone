@@ -1,30 +1,18 @@
 import { API_BASE } from "../utils/constants";
 
 /* =======================
-   Types
+   Local helpers only
+   (NO interfaces here)
 ======================= */
 
-export type Status = "todo" | "in-progress" | "done";
-export type Priority = "high" | "medium" | "low";
-
-export interface Task {
-  id: string;
-  title: string;
-  status: Status;
-  priority: Priority;
-  projectId?: string;
-  assigneeId?: number;
-}
-
-/* =======================
-   Local Storage Helpers
-======================= */
+type Status = "todo" | "in-progress" | "done";
+type Priority = "high" | "medium" | "low";
 
 function getTaskKey(token: string | null) {
   return token ? `jira_tasks_${token}` : null;
 }
 
-function safeGet(token: string | null): Task[] {
+function safeGet(token: string | null): any[] {
   try {
     const key = getTaskKey(token);
     if (!key) return [];
@@ -35,7 +23,7 @@ function safeGet(token: string | null): Task[] {
   }
 }
 
-function safeSet(data: Task[], token: string | null) {
+function safeSet(data: any[], token: string | null) {
   try {
     const key = getTaskKey(token);
     if (key) localStorage.setItem(key, JSON.stringify(data));
@@ -43,23 +31,23 @@ function safeSet(data: Task[], token: string | null) {
 }
 
 /* =======================
-   CRUD Functions
+   Task APIs (LOOSE)
 ======================= */
 
-export async function getAllTasks(token: string | null): Promise<Task[]> {
+export async function getAllTasks(token: string | null) {
   const cached = safeGet(token);
   if (cached.length > 0) return cached;
 
   const res = await fetch(`${API_BASE}/todos?limit=30`);
   const data = await res.json();
 
-  const priorityKeys: Priority[] = ["high", "medium", "low"];
+  const priorities: Priority[] = ["high", "medium", "low"];
 
-  const tasks: Task[] = data.todos.map((t: any, index: number) => ({
+  const tasks = data.todos.map((t: any, index: number) => ({
     id: String(t.id),
     title: t.todo,
     status: t.completed ? "done" : "todo",
-    priority: priorityKeys[Math.floor(Math.random() * priorityKeys.length)],
+    priority: priorities[Math.floor(Math.random() * priorities.length)],
     assigneeId: (index % 10) + 1,
   }));
 
@@ -67,10 +55,10 @@ export async function getAllTasks(token: string | null): Promise<Task[]> {
   return tasks;
 }
 
-export async function addTask(task: Task, token: string | null) {
+export async function addTask(task: any, token: string | null) {
   const tasks = safeGet(token);
 
-  const newTask: Task = {
+  const newTask = {
     ...task,
     id: `TASK-${Date.now()}`,
   };
@@ -81,8 +69,8 @@ export async function addTask(task: Task, token: string | null) {
 }
 
 export async function updateTask(
-  taskId: string,
-  updates: Partial<Task>,
+  taskId: string | number,
+  updates: any,
   token: string | null
 ) {
   const tasks = safeGet(token);
@@ -94,26 +82,21 @@ export async function updateTask(
 }
 
 export function updateTaskStatus(
-  taskId: string,
+  taskId: string | number,
   status: Status,
   token: string | null
 ) {
   return updateTask(taskId, { status }, token);
 }
 
-export async function deleteTask(taskId: string, token: string | null) {
+export async function deleteTask(taskId: string | number, token: string | null) {
   const tasks = safeGet(token);
   const updated = tasks.filter((t) => String(t.id) !== String(taskId));
   safeSet(updated, token);
   return updated;
 }
 
-/* =======================
-   Comments (FIXED EXPORT)
-======================= */
-
-export async function getTaskComments(taskId: string) {
-  // Locally created tasks do not have API comments
+export async function getTaskComments(taskId: string | number) {
   if (String(taskId).startsWith("TASK-")) return [];
 
   try {

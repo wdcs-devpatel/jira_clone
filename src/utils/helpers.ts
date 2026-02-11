@@ -24,14 +24,11 @@ export const PROJECTS: Project[] = [
   { id: "gamma", name: "Project Gamma" },
 ];
 
-/* =======================
-   Helpers
-======================= */
+
 
 function normalizeTaskId(id: string | number): number {
   if (typeof id === "number") return id;
 
-  // convert string to stable numeric hash
   let hash = 0;
   for (let i = 0; i < id.length; i++) {
     hash = (hash << 5) - hash + id.charCodeAt(i);

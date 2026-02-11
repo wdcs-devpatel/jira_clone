@@ -12,7 +12,6 @@ import Profile from "../pages/Profile";
 
 function AppRoutes() {
   const location = useLocation();
-  // Ensure paths match exactly
   const hideNavbar = ["/", "/signup"].includes(location.pathname);
 
   return (
@@ -20,11 +19,9 @@ function AppRoutes() {
       {!hideNavbar && <Navbar />}
 
       <Routes>
-        {/* Public Routes */}
         <Route path="/" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
-        {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/kanban/:projectId" element={<KanbanBoard />} />
@@ -33,7 +30,6 @@ function AppRoutes() {
           <Route path="/profile" element={<Profile />} />
         </Route>
 
-        {/* Fallback */}
         <Route
           path="*"
           element={<div className="p-10 text-center text-white">404 - Page Not Found</div>}

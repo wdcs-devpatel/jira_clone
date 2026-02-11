@@ -1,16 +1,5 @@
 import { createContext, useContext, useState, ReactNode } from "react";
-
-interface User {
-  [key: string]: any;
-}
-
-interface AuthContextType {
-  token: string | null;
-  user: User | null;
-  login: (newToken: string, userData: User) => void;
-  logout: () => void;
-  updateUser: (updatedData: Partial<User>) => void;
-}
+import { User, AuthContextType } from "../interfaces";
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -26,11 +15,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(() => {
     try {
       const savedUser = localStorage.getItem("currentUser");
-      // Check if savedUser is "undefined" or null before parsing
       if (!savedUser || savedUser === "undefined") return null;
-      return JSON.parse(savedUser);
-    } catch (error) {
-      console.error("Failed to parse user from localStorage", error);
+      return JSON.parse(savedUser) as User;
+    } catch {
       return null;
     }
   });
@@ -51,9 +38,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const updateUser = (updatedData: Partial<User>) => {
     if (!user) return;
-    const newUserData = { ...user, ...updatedData };
-    localStorage.setItem("currentUser", JSON.stringify(newUserData));
-    setUser(newUserData);
+    const newUser = { ...user, ...updatedData };
+    localStorage.setItem("currentUser", JSON.stringify(newUser));
+    setUser(newUser);
   };
 
   return (

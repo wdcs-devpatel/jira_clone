@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { getAllTasks } from "../services/taskService";
+
+import { Task, TaskPriority } from "../interfaces";
+
 import {
   getProjects,
   addProject,
@@ -9,8 +12,10 @@ import {
   enrichTasksWithProject,
   Project,
 } from "../utils/projectHelper";
+
 import CreateProjectModal from "../components/CreateProjectModal";
 import ProjectCard from "../components/ProjectCard";
+
 import {
   LayoutDashboard,
   Plus,
@@ -26,14 +31,6 @@ import {
   ChevronDown
 } from "lucide-react";
 
-type Priority = "high" | "medium" | "low";
-
-interface Task {
-  id: string;
-  status: "todo" | "in-progress" | "done";
-  [key: string]: any;
-}
-
 export default function Dashboard() {
   const { token } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -44,7 +41,11 @@ export default function Dashboard() {
   const [showCreateProject, setShowCreateProject] = useState<boolean>(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
 
-  const priorityWeight: Record<Priority, number> = { high: 3, medium: 2, low: 1 };
+  const priorityWeight: Record<TaskPriority, number> = { 
+    high: 3, 
+    medium: 2, 
+    low: 1 
+  };
 
   useEffect(() => {
     if (token) loadDashboard();
@@ -56,7 +57,10 @@ export default function Dashboard() {
     try {
       const projectList = (getProjects(token) as Project[]) || [];
       const rawTasks = await getAllTasks(token);
-      const enrichedTasks = (enrichTasksWithProject(rawTasks, token) as Task[]) || [];
+      
+      // FIX: Use 'as unknown as Task[]' to resolve the type mismatch error
+      const enrichedTasks = (enrichTasksWithProject(rawTasks, token) as unknown as Task[]) || [];
+      
       setProjects(projectList);
       setTasks(enrichedTasks);
     } catch (err) {
@@ -100,8 +104,10 @@ export default function Dashboard() {
       );
     }
     result.sort((a, b) => {
-      const weightA = a.priority ? priorityWeight[a.priority as Priority] : 0;
-      const weightB = b.priority ? priorityWeight[b.priority as Priority] : 0;
+      // Cast a.priority to TaskPriority to match our weight map
+      const weightA = a.priority ? priorityWeight[a.priority as TaskPriority] : 0;
+      const weightB = b.priority ? priorityWeight[b.priority as TaskPriority] : 0;
+      
       switch (sortBy) {
         case "priority-desc": return weightB - weightA;
         case "priority-asc": return weightA - weightB;
@@ -185,7 +191,6 @@ export default function Dashboard() {
 
         {/* Performance & Task Breakdown Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Progress Card */}
           <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-center space-y-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -218,7 +223,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Task Status Breakdown */}
           <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Task Breakdown</p>
             <div className="space-y-5">

@@ -38,7 +38,6 @@ export default function Profile() {
       const isLocalUser = idStr.startsWith("local-");
 
       if (isLocalUser) {
-        // ✅ Handle Local Update
         const localUsers = JSON.parse(localStorage.getItem("localUsers") || "[]");
         const updatedLocalUsers = localUsers.map((u: any) => 
           u.id === user.id ? { ...u, ...formData } : u
@@ -47,7 +46,6 @@ export default function Profile() {
         updateUser({ ...user, ...formData });
         toast.success("Local profile updated!");
       } else {
-        // ✅ Handle Server Update
         const result = await updateProfile(user.id, formData);
         updateUser({ ...user, ...result });
         toast.success("Server profile updated!");

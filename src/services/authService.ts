@@ -1,12 +1,6 @@
-interface LoginResponse {
-  id: number;
-  username: string;
-  email?: string;
-  firstName?: string;
-  lastName?: string;
-  image?: string;
-  accessToken: string;
-}
+// src/services/authService.ts
+
+import { LoginResponse } from "../interfaces";
 
 export async function loginUser(
   username: string,

@@ -5,15 +5,14 @@ import { useAuth } from "../context/AuthContext";
 import { loginUser } from "../services/authService";
 import { User, Lock, LogIn, AlertCircle } from "lucide-react";
 
-// Removed ": JSX.Element" - TypeScript infers this automatically
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const [identifier, setIdentifier] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
-  const [error, setError] = useState<string>("");
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   async function handleLogin(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -21,8 +20,10 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      // Improved typing from 'any[]' to a generic object array
-      const localUsers: Record<string, any>[] = JSON.parse(
+      /* =======================
+         LOCAL USERS LOGIN
+      ======================= */
+      const localUsers: any[] = JSON.parse(
         localStorage.getItem("localUsers") || "[]"
       );
 
@@ -39,13 +40,29 @@ export default function Login() {
         return;
       }
 
+      /* =======================
+         API LOGIN
+      ======================= */
       const data = await loginUser(identifier, password);
-      login(data.accessToken, data);
+
+      // 🔑 NORMALIZE API RESPONSE → USER SHAPE
+      const apiUser = {
+        id: data.id,
+        username: data.username,
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        avatar: data.image,
+      };
+
+      login(data.accessToken, apiUser);
 
       toast.success("Login successful!");
       navigate("/dashboard");
-    } catch (err) {
-      setError("Invalid credentials. For test accounts, use 'emilys' / 'emilyspass'.");
+    } catch {
+      setError(
+        "Invalid credentials. For test accounts, use 'emilys' / 'emilyspass'."
+      );
       toast.error("Login failed");
     } finally {
       setIsLoading(false);
@@ -66,7 +83,10 @@ export default function Login() {
         <div className="p-8 pt-6">
           <form onSubmit={handleLogin} className="space-y-5">
             <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+              <User
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                size={18}
+              />
               <input
                 className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                 placeholder="Username or Email"
@@ -77,7 +97,10 @@ export default function Login() {
             </div>
 
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+              <Lock
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                size={18}
+              />
               <input
                 type="password"
                 placeholder="Password"
@@ -105,7 +128,7 @@ export default function Login() {
 
           <div className="mt-6 text-center pt-6 border-t border-slate-700/50">
             <p className="text-slate-400 text-sm">
-              Don't have an account?{" "}
+              Don&apos;t have an account?{" "}
               <button
                 onClick={() => navigate("/signup")}
                 className="text-indigo-400 hover:text-indigo-300 font-semibold transition-colors"

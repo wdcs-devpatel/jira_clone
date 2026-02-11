@@ -1,9 +1,12 @@
 const API_BASE = "https://dummyjson.com";
 
+type UserId = string | number;
+
 interface User {
-  id: number | string;
-  name: string;
-  avatar: string;
+  id: UserId;
+  name?: string;
+  avatar?: string;
+  [key: string]: any;
 }
 
 export async function getUsers(): Promise<User[]> {
@@ -12,7 +15,7 @@ export async function getUsers(): Promise<User[]> {
     const data = await res.json();
 
     return (
-      data.users.map((u: any) => ({
+      data.users?.map((u: any) => ({
         id: u.id,
         name: `${u.firstName} ${u.lastName}`,
         avatar: u.image,
@@ -24,19 +27,18 @@ export async function getUsers(): Promise<User[]> {
 }
 
 export async function updateProfile(
-  userId: number | string, // ✅ Changed to allow string IDs
-  profileData: Record<string, any>
-) {
+  userId: UserId,
+  profileData: Partial<User>
+): Promise<User> {
   if (!userId) {
     throw new Error("User ID is missing. Please log out and back in.");
   }
 
-  // ✅ Check if it's a local user
-  // We don't send local users to the DummyJSON server because they don't exist there.
-  const isLocal = typeof userId === "string" && userId.startsWith("local-");
-  
+  // Local users should NOT hit DummyJSON
+  const isLocal =
+    typeof userId === "string" && userId.startsWith("local-");
+
   if (isLocal) {
-    // Return the data as if the server accepted it so Profile.tsx can handle localStorage
     return { ...profileData, id: userId };
   }
 
@@ -48,7 +50,9 @@ export async function updateProfile(
 
   if (!res.ok) {
     const errorData = await res.json();
-    throw new Error(errorData.message || "Update failed");
+    throw new Error(
+      errorData.message || "Update failed"
+    );
   }
 
   return await res.json();
