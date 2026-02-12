@@ -1,5 +1,6 @@
 import { useState, useEffect, FormEvent } from "react";
 import { PRIORITY_LIST } from "../utils/constants";
+import { UserCheck } from "lucide-react"; // Added icon for leader field
 
 type Priority = "high" | "medium" | "low";
 
@@ -8,6 +9,7 @@ interface Project {
   name: string;
   description?: string;
   priority: Priority;
+  teamLeader?: string; // Added to interface
 }
 
 interface CreateProjectModalProps {
@@ -24,16 +26,19 @@ export default function CreateProjectModal({
   const [name, setName] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [priority, setPriority] = useState<Priority>("medium");
+  const [teamLeader, setTeamLeader] = useState<string>(""); // New State
 
   useEffect(() => {
     if (editingProject) {
       setName(editingProject.name);
       setDescription(editingProject.description || "");
       setPriority(editingProject.priority || "medium");
+      setTeamLeader(editingProject.teamLeader || ""); // Set editing value
     } else {
       setName("");
       setDescription("");
       setPriority("medium");
+      setTeamLeader("");
     }
   }, [editingProject]);
 
@@ -43,12 +48,14 @@ export default function CreateProjectModal({
       ...(editingProject?.id && { id: editingProject.id }),
       name, 
       description, 
-      priority 
+      priority,
+      teamLeader // Pass leader to save function
     });
   }
+
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-      <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl w-full max-w-lg shadow-2xl border border-slate-200 dark:border-slate-800">
+      <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl w-full max-w-lg shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in duration-300">
         <h2 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">
           {editingProject ? "Edit Project" : "Create New Project"}
         </h2>
@@ -63,8 +70,24 @@ export default function CreateProjectModal({
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 outline-none text-slate-900 dark:text-white"
+              className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 outline-none text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 transition-all"
             />
+          </div>
+
+          {/* New Team Leader Input */}
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2 tracking-widest">
+              Team Leader / Assigned To
+            </label>
+            <div className="relative">
+              <UserCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input
+                value={teamLeader}
+                onChange={(e) => setTeamLeader(e.target.value)}
+                placeholder="Enter leader name"
+                className="w-full pl-12 pr-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 outline-none text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 transition-all"
+              />
+            </div>
           </div>
 
           <div>
@@ -74,7 +97,7 @@ export default function CreateProjectModal({
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 min-h-[100px] text-slate-900 dark:text-white"
+              className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 min-h-[80px] text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
             />
           </div>
 
@@ -105,7 +128,7 @@ export default function CreateProjectModal({
             <button type="button" onClick={onClose} className="px-6 py-2.5 text-slate-500 font-bold hover:text-slate-700 transition-colors">
               Cancel
             </button>
-            <button type="submit" className="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-lg transition-all">
+            <button type="submit" className="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all active:scale-95">
               {editingProject ? "Update" : "Create Project"}
             </button>
           </div>

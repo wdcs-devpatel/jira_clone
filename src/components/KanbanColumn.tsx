@@ -1,50 +1,62 @@
-import { PRIORITIES } from "../utils/constants";
-
-type Priority = "high" | "medium" | "low";
-
-interface Task {
-  id: string | number;
-  title: string;
-  todo?: string; 
-  priority: Priority;
-  status: string;
-}
+import { Plus } from "lucide-react";
+import KanbanCard from "./KanbanCard";
+import { Task, TaskId } from "../interfaces/task/task.interface";
 
 interface KanbanColumnProps {
   title: string;
+  status: string;
   tasks: Task[];
+  users: any[];
+  onEdit: (task: Task) => void;
+  onDelete: (taskId: TaskId) => void;
+  onAddClick: () => void;
+  onDragStart: (e: React.DragEvent, taskId: TaskId) => void; 
 }
 
-export default function KanbanColumn({ title, tasks }: KanbanColumnProps) {
+export default function KanbanColumn({ 
+  title, 
+  status, 
+  tasks, 
+  users, 
+  onEdit, 
+  onDelete, 
+  onAddClick,
+  onDragStart 
+}: KanbanColumnProps) {
   return (
-    <div className="bg-slate-100/50 dark:bg-slate-900/40 rounded-3xl p-5 min-h-[500px] border border-slate-200 dark:border-slate-800/60 transition-colors duration-300">
-      <div className="flex justify-between items-center mb-6 px-2">
+
+    <div className="bg-slate-50 dark:bg-slate-800/20 rounded-[2.5rem] p-6 min-h-[650px] border border-slate-200 dark:border-slate-800/40 transition-all shadow-inner">
+      <div className="flex justify-between items-center mb-8 px-2">
         <h2 className="font-black uppercase text-[10px] tracking-[0.2em] text-slate-400 dark:text-slate-500">
-          {title} <span className="ml-2 opacity-50">({tasks.length})</span>
+          {title} 
+          <span className="ml-2 opacity-50">({tasks.length})</span>
         </h2>
+        <button
+          onClick={onAddClick}
+          className="p-1.5 hover:bg-white dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-indigo-500 transition-all active:scale-95"
+        >
+          <Plus size={20} />
+        </button>
       </div>
 
       <div className="space-y-4">
-        {tasks.map((task) => {
-          const p = PRIORITIES[task.priority] || PRIORITIES.medium;
-          return (
-            <div key={task.id} className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm hover:shadow-md dark:hover:border-indigo-500/30 cursor-pointer transition-all">
-              <div className="mb-3">
-                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${p.bg} ${p.color} ${p.darkBg} ${p.darkText}`}>
-                  {p.label}
-                </span>
-              </div>
-              <p className="text-sm font-bold text-slate-800 dark:text-slate-200 leading-relaxed">
-                {task.title || task.todo}
-              </p>
-              <div className="mt-4 pt-3 border-t border-slate-50 dark:border-slate-700/30">
-                <span className="text-[10px] font-mono text-slate-400">
-                  #{String(task.id).slice(-6).toUpperCase()}
-                </span>
-              </div>
-            </div>
-          );
-        })}
+        {tasks.map((task) => (
+          <KanbanCard
+            key={task.id}
+            task={task}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onDragStart={onDragStart} 
+            assignee={users.find((u) => u.id === Number(task.assigneeId))}
+            leader={users.find((u) => u.id === Number(task.leaderId))}
+          />
+        ))}
+        
+        {tasks.length === 0 && (
+          <div className="py-10 border-2 border-dashed border-slate-200 dark:border-slate-800/20 rounded-2xl flex items-center justify-center">
+            <p className="text-[10px] font-bold uppercase text-slate-300 dark:text-slate-700 tracking-widest">No Tasks</p>
+          </div>
+        )}
       </div>
     </div>
   );

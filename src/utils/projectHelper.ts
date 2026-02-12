@@ -1,7 +1,7 @@
 export type Priority = "high" | "medium" | "low";
 
 export interface Project {
-  id?: string; // ✅ Made optional to fix projectData errors
+  id?: string; 
   name: string;
   description?: string;
   priority: Priority;

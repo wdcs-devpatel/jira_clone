@@ -58,7 +58,6 @@ export default function Dashboard() {
       const projectList = (getProjects(token) as Project[]) || [];
       const rawTasks = await getAllTasks(token);
       
-      // FIX: Use 'as unknown as Task[]' to resolve the type mismatch error
       const enrichedTasks = (enrichTasksWithProject(rawTasks, token) as unknown as Task[]) || [];
       
       setProjects(projectList);
@@ -104,7 +103,6 @@ export default function Dashboard() {
       );
     }
     result.sort((a, b) => {
-      // Cast a.priority to TaskPriority to match our weight map
       const weightA = a.priority ? priorityWeight[a.priority as TaskPriority] : 0;
       const weightB = b.priority ? priorityWeight[b.priority as TaskPriority] : 0;
       
@@ -135,7 +133,6 @@ export default function Dashboard() {
     <div className="min-h-screen bg-slate-50 dark:bg-[#0b1220] p-6 md:p-10 transition-colors duration-300">
       <div className="max-w-7xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
         
-        {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-200 dark:border-slate-800 pb-8">
           <div>
             <div className="flex items-center gap-3 mb-2">
@@ -167,7 +164,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
             { label: "Total Tasks", value: stats.total, icon: ListTodo, color: "text-indigo-600", bg: "bg-indigo-50 dark:bg-indigo-500/10" },
@@ -189,7 +185,6 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* Performance & Task Breakdown Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-center space-y-6">
             <div className="flex items-center justify-between">
@@ -257,20 +252,28 @@ export default function Dashboard() {
                   {processedProjects.length}
                 </span>
               </h2>
-              <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 group hover:border-indigo-400 transition-all shadow-sm">
-                <SlidersHorizontal size={14} className="text-slate-400 mr-2" />
-                <select 
-                  value={sortBy} 
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="appearance-none bg-transparent py-2.5 pr-6 outline-none text-[10px] font-black text-slate-600 dark:text-slate-200 cursor-pointer uppercase tracking-widest"
-                >
-                  <option value="newest">Newest First</option>
-                  <option value="priority-desc">Priority: High to Low</option>
-                  <option value="priority-asc">Priority: Low to High</option>
-                  <option value="name-asc">Name: A - Z</option>
-                </select>
-                <ChevronDown size={14} className="text-slate-400 pointer-events-none" />
-              </div>
+              <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 group hover:border-indigo-500/50 hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-300 active:scale-[0.98]">
+  <SlidersHorizontal 
+    size={14} 
+    className="text-slate-400 group-hover:text-indigo-500 transition-colors duration-300 mr-2" 
+  />
+  
+  <select 
+    value={sortBy} 
+    onChange={(e) => setSortBy(e.target.value)}
+    className="appearance-none bg-transparent py-2.5 pr-8 outline-none text-[10px] font-black text-slate-600 dark:text-slate-200 cursor-pointer uppercase tracking-widest relative z-10"
+  >
+    <option value="newest" className="dark:bg-slate-900">Newest First</option>
+    <option value="priority-desc" className="dark:bg-slate-900">Priority: High to Low</option>
+    <option value="priority-asc" className="dark:bg-slate-900">Priority: Low to High</option>
+    <option value="name-asc" className="dark:bg-slate-900">Name: A - Z</option>
+  </select>
+
+     <ChevronDown 
+    size={14} 
+    className="text-slate-400 -ml-6 pointer-events-none group-hover:text-indigo-500 group-hover:translate-y-0.5 transition-all duration-300" 
+  />
+</div>
             </div>
 
             {processedProjects.length > 0 ? (

@@ -9,7 +9,7 @@
 
     .dark body {
       @apply bg-[#0f172a] text-slate-100;
-      background-image: linear-gradient(to bottom right, #0f172a, #111827, #020617);
+      background-image: linear-gradient(to bottom right, #234aa5, #29437c, #223bac);
       background-attachment: fixed;
     }
   }
