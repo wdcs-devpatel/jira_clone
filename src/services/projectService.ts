@@ -5,49 +5,91 @@ export interface Project {
   name: string;
   description?: string;
   priority?: string;
+  teamLeader?: string;
+}
+
+/* =======================
+   AUTH HEADER HELPER
+======================= */
+function authHeader(): HeadersInit {
+  const user = localStorage.getItem("currentUser");
+
+  return {
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+    ...(user ? { "x-user": user } : {})
+  };
+}
+
+/* =======================
+   HANDLE RESPONSE HELPER
+======================= */
+async function handleResponse(res: Response) {
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    const message =
+      data?.message ||
+      `Request failed with status ${res.status}`;
+    throw new Error(message);
+  }
+
+  return data;
 }
 
 /* =======================
    GET ALL PROJECTS
 ======================= */
 export async function getProjects(): Promise<Project[]> {
-  const res = await fetch(BASE_URL);
-  if (!res.ok) throw new Error("Failed to fetch projects");
-  return res.json();
+  const res = await fetch(BASE_URL, {
+    method: "GET",
+    headers: authHeader(),
+  });
+
+  return handleResponse(res);
 }
 
 /* =======================
    CREATE PROJECT
 ======================= */
-export async function addProject(data: Partial<Project>): Promise<Project> {
+export async function addProject(
+  data: Partial<Project>
+): Promise<Project> {
   const res = await fetch(BASE_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeader(),
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error("Failed to create project");
-  return res.json();
+
+  return handleResponse(res);
 }
 
 /* =======================
    UPDATE PROJECT
 ======================= */
-export async function updateProject(id: number, data: Partial<Project>): Promise<Project> {
+export async function updateProject(
+  id: number,
+  data: Partial<Project>
+): Promise<Project> {
   const res = await fetch(`${BASE_URL}/${id}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeader(),
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error("Failed to update project");
-  return res.json();
+
+  return handleResponse(res);
 }
 
 /* =======================
    DELETE PROJECT
 ======================= */
-export async function deleteProject(id: number | string): Promise<void> {
+export async function deleteProject(
+  id: number | string
+): Promise<void> {
   const res = await fetch(`${BASE_URL}/${id}`, {
     method: "DELETE",
+    headers: authHeader(),
   });
-  if (!res.ok) throw new Error("Failed to delete project");
+
+  await handleResponse(res);
 }

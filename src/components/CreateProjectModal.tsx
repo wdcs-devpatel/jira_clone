@@ -5,7 +5,6 @@ import { UserCheck } from "lucide-react";
 type Priority = "high" | "medium" | "low";
 
 interface Project {
-  // ✅ Fixed: Changed id to number
   id?: number;
   name: string;
   description?: string;
@@ -46,7 +45,7 @@ export default function CreateProjectModal({
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     onSaved({ 
-      ...(editingProject?.id && { id: editingProject.id }),
+      id: editingProject?.id, // Fixed: Pass ID directly (avoids falsy checks on ID 0)
       name, 
       description, 
       priority,
@@ -60,7 +59,6 @@ export default function CreateProjectModal({
         <h2 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">
           {editingProject ? "Edit Project" : "Create New Project"}
         </h2>
-
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2 tracking-widest">
@@ -74,7 +72,6 @@ export default function CreateProjectModal({
               className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 outline-none text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 transition-all"
             />
           </div>
-
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2 tracking-widest">
               Team Leader / Assigned To
@@ -89,7 +86,6 @@ export default function CreateProjectModal({
               />
             </div>
           </div>
-
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2 tracking-widest">
               Description
@@ -100,7 +96,6 @@ export default function CreateProjectModal({
               className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 min-h-[80px] text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
             />
           </div>
-
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2 tracking-widest">
               Project Priority
@@ -123,7 +118,6 @@ export default function CreateProjectModal({
               ))}
             </div>
           </div>
-
           <div className="flex justify-end gap-4 pt-4">
             <button type="button" onClick={onClose} className="px-6 py-2.5 text-slate-500 font-bold hover:text-slate-700 transition-colors">
               Cancel

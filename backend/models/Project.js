@@ -21,6 +21,10 @@ const Project = sequelize.define("Project", {
   teamLeader: {
     type: DataTypes.STRING,
   },
+  userId: {
+    type: DataTypes.STRING,
+    allowNull: false, // Every project must belong to a user
+  },
 }, {
   timestamps: true,
 });
