@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "react-toastify"; 
 import { getAllTasks } from "../services/taskService";
 import { 
   getProjects, 
@@ -52,12 +53,20 @@ export default function Dashboard() {
       const projectList = await getProjects();
       setProjects(projectList);
 
-      const taskPromises = projectList.map(p => getAllTasks(p.id));
-      const tasksPerProject = await Promise.all(taskPromises);
-      setTasks(tasksPerProject.flat());
+      // FIXED: Added '!' to p.id to resolve the optional ID type error
+      const results = await Promise.allSettled(
+        projectList.map(p => getAllTasks(p.id!))
+      );
+
+      const successfulTasks = results
+        .filter((result): result is PromiseFulfilledResult<Task[]> => result.status === "fulfilled")
+        .map(result => result.value);
+
+      setTasks(successfulTasks.flat());
       
-    } catch (err) {
-      console.error("Dashboard Load Error:", err);
+    } catch (err: any) {
+      console.error("Dashboard Load Error:", err.message || err);
+      toast.error("Failed to sync dashboard data.");
     } finally {
       setLoading(false);
     }
@@ -65,22 +74,24 @@ export default function Dashboard() {
 
   async function handleSaveProject(projectData: Project) {
     try {
-      if (editingProject?.id) {
-        // ✅ Fixed: Explicit payload to avoid sending 'id' in the body
+      if (editingProject?.id !== undefined) {
         await updateProject(editingProject.id, {
           name: projectData.name,
           description: projectData.description,
           priority: projectData.priority,
           teamLeader: projectData.teamLeader
         });
+        toast.success("Project updated successfully");
       } else {
         await addProject(projectData as Partial<Project>);
+        toast.success("New project launched");
       }
       setEditingProject(null);
       setShowCreateProject(false);
       await loadDashboard();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Save Project Error:", err);
+      toast.error(err.message || "Failed to save project.");
     }
   }
 
@@ -88,9 +99,11 @@ export default function Dashboard() {
     if (window.confirm("Delete this project? This will also remove associated tasks.")) {
       try {
         await deleteProject(id);
+        toast.success("Project removed");
         await loadDashboard();
-      } catch (err) {
+      } catch (err: any) {
         console.error("Delete Project Error:", err);
+        toast.error("Unable to delete project.");
       }
     }
   }
@@ -104,6 +117,7 @@ export default function Dashboard() {
         p.description?.toLowerCase().includes(lowerSearch)
       );
     }
+
     result.sort((a, b) => {
       const weightA = a.priority ? priorityWeight[a.priority as TaskPriority] : 0;
       const weightB = b.priority ? priorityWeight[b.priority as TaskPriority] : 0;
@@ -113,6 +127,7 @@ export default function Dashboard() {
         case "priority-asc": return weightA - weightB;
         case "name-asc": return a.name.localeCompare(b.name);
         case "name-desc": return b.name.localeCompare(a.name);
+        case "newest": return (b.id || 0) - (a.id || 0); 
         default: return 0;
       }
     });
@@ -273,8 +288,8 @@ export default function Dashboard() {
                 {processedProjects.map((p) => (
                   <ProjectCard 
                     key={p.id} 
-                    project={p} 
-                    onEdit={(proj) => setEditingProject(proj)} 
+                    project={p as any} // Cast as any if TaskDetails and ProjectCard types differ slightly
+                    onEdit={(proj) => setEditingProject(proj as any)} 
                     onDelete={handleDeleteProject} 
                   />
                 ))}
@@ -295,7 +310,7 @@ export default function Dashboard() {
           <CreateProjectModal 
             editingProject={editingProject as any} 
             onClose={() => { setShowCreateProject(false); setEditingProject(null); }} 
-            onSaved={handleSaveProject} 
+            onSaved={handleSaveProject as any} 
           />
         )}
       </div>

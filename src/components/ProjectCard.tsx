@@ -13,7 +13,6 @@ import { PRIORITIES } from "../utils/constants";
 type Priority = "high" | "medium" | "low";
 
 interface Project {
-  // ✅ Fixed: ID is a number to match PostgreSQL and other components
   id: number;
   name: string;
   description?: string;
@@ -24,7 +23,6 @@ interface Project {
 interface ProjectCardProps {
   project: Project;
   onEdit: (project: Project) => void;
-  // ✅ Fixed: onDelete expects a number
   onDelete: (id: number) => void;
 }
 
@@ -38,12 +36,22 @@ export default function ProjectCard({
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onDelete(project.id);
+    // Safety check for ID existence
+    if (project.id !== undefined) {
+      onDelete(project.id);
+    }
+  };
+
+  const handleNavigate = () => {
+    // Defensive check: only navigate if ID exists to prevent 404 routing errors
+    if (project.id) {
+      navigate(`/kanban/${project.id}`);
+    }
   };
 
   return (
     <div
-      onClick={() => navigate(`/kanban/${project.id}`)}
+      onClick={handleNavigate}
       className="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 cursor-pointer hover:shadow-2xl hover:shadow-indigo-500/10 dark:hover:border-indigo-500/50 transition-all duration-300 flex flex-col h-full overflow-hidden"
     >
       {/* Dynamic Glow Flare */}
@@ -97,7 +105,6 @@ export default function ProjectCard({
         <div className="flex flex-col">
           <span className="text-[9px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-tighter">PROJECT REF</span>
           <span className="text-[11px] font-mono font-bold text-slate-600 dark:text-slate-300">
-            {/* ✅ Fixed: ID is converted to String before calling slice */}
             #{String(project.id).padStart(6, '0').toUpperCase()}
           </span>
         </div>

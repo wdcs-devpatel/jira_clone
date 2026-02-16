@@ -1,22 +1,21 @@
-module.exports = (req, res, next) => {
-  try {
-    const userHeader = req.headers["x-user"];
+    module.exports = (req, res, next) => {
+    const header = req.headers.authorization;
 
-    if (!userHeader) {
-      return res.status(401).json({ message: "Not authenticated. No user header found." });
-    }
+    if (!header)
+        return res.status(401).json({ message: "No token provided" });
 
-    // Safely parse the user string
-    req.user = JSON.parse(userHeader);
-    
-    // Ensure the user object has an ID before proceeding
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({ message: "Invalid user data in header." });
-    }
+    const token = header.split(" ")[1];
+
+    if (!token)
+        return res.status(401).json({ message: "Invalid token format" });
+
+    // Fake decode logic (since you're using token-id format)
+    if (!token.startsWith("token-"))
+        return res.status(401).json({ message: "Invalid token" });
+
+    const userId = token.split("-")[1];
+
+    req.user = { id: Number(userId) };
 
     next();
-  } catch (err) {
-    console.error("Auth Middleware Error:", err.message);
-    return res.status(401).json({ message: "Invalid authentication format." });
-  }
-};
+    };

@@ -1,16 +1,8 @@
 import { useState, useEffect, FormEvent } from "react";
 import { PRIORITY_LIST } from "../utils/constants";
 import { UserCheck } from "lucide-react";
-
-type Priority = "high" | "medium" | "low";
-
-interface Project {
-  id?: number;
-  name: string;
-  description?: string;
-  priority: Priority;
-  teamLeader?: string;
-}
+import { Project } from "../services/projectService";
+import { TaskPriority } from "../interfaces";
 
 interface CreateProjectModalProps {
   editingProject: Project | null;
@@ -25,14 +17,14 @@ export default function CreateProjectModal({
 }: CreateProjectModalProps) {
   const [name, setName] = useState<string>("");
   const [description, setDescription] = useState<string>("");
-  const [priority, setPriority] = useState<Priority>("medium");
+  const [priority, setPriority] = useState<TaskPriority>("medium");
   const [teamLeader, setTeamLeader] = useState<string>("");
 
   useEffect(() => {
     if (editingProject) {
       setName(editingProject.name);
       setDescription(editingProject.description || "");
-      setPriority(editingProject.priority || "medium");
+      setPriority((editingProject.priority as TaskPriority) || "medium");
       setTeamLeader(editingProject.teamLeader || "");
     } else {
       setName("");
@@ -44,8 +36,13 @@ export default function CreateProjectModal({
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    
+    /**
+     * FIXED: Using the "Stability Upgrade" spread.
+     * Only includes 'id' in the object if editingProject exists.
+     */
     onSaved({ 
-      id: editingProject?.id, // Fixed: Pass ID directly (avoids falsy checks on ID 0)
+      ...(editingProject && { id: editingProject.id }),
       name, 
       description, 
       priority,
@@ -105,7 +102,7 @@ export default function CreateProjectModal({
                 <button
                   key={p.value}
                   type="button"
-                  onClick={() => setPriority(p.value)}
+                  onClick={() => setPriority(p.value as TaskPriority)}
                   className={`py-3 rounded-xl border-2 font-bold text-xs transition-all flex flex-col items-center gap-1 ${
                     priority === p.value
                       ? `${p.bg} ${p.color} border-current ${p.darkBg} ${p.darkText}`

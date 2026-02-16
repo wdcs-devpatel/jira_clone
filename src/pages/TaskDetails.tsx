@@ -15,12 +15,12 @@ interface Comment {
 }
 
 interface Task {
-  id: string;
+  id: number; // FIXED: Changed from string to number
   title: string;
   status: Status;
   priority: Priority;
-  projectId: string;
-  comments?: Comment[]; // ✅ now coming from DB JSON column
+  projectId: number; // FIXED: Changed from string to number
+  comments?: Comment[]; 
 }
 
 /* =======================
@@ -34,7 +34,7 @@ export default function TaskDetails({ task }: { task: Task }) {
   const p = PRIORITIES[task.priority] || PRIORITIES.medium;
 
   useEffect(() => {
-    // ✅ Instead of API call, read from task directly
+    // Read from task directly as it comes from the JSON column in DB
     if (task.comments && Array.isArray(task.comments)) {
       setComments(task.comments);
     } else {
