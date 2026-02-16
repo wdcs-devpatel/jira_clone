@@ -1,18 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { useAuth } from "../context/AuthContext";
 import { getAllTasks } from "../services/taskService";
+import { 
+  getProjects, 
+  addProject, 
+  updateProject, 
+  deleteProject, 
+  Project 
+} from "../services/projectService";
 
 import { Task, TaskPriority } from "../interfaces";
-
-import {
-  getProjects,
-  addProject,
-  updateProject,
-  deleteProject,
-  enrichTasksWithProject,
-  Project,
-} from "../utils/projectHelper";
-
 import CreateProjectModal from "../components/CreateProjectModal";
 import ProjectCard from "../components/ProjectCard";
 
@@ -32,7 +28,6 @@ import {
 } from "lucide-react";
 
 export default function Dashboard() {
-  const { token } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -48,20 +43,19 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    if (token) loadDashboard();
-  }, [token]);
+    loadDashboard();
+  }, []);
 
   async function loadDashboard() {
-    if (!token) return;
     setLoading(true);
     try {
-      const projectList = (getProjects(token) as Project[]) || [];
-      const rawTasks = await getAllTasks(token);
-      
-      const enrichedTasks = (enrichTasksWithProject(rawTasks, token) as unknown as Task[]) || [];
-      
+      const projectList = await getProjects();
       setProjects(projectList);
-      setTasks(enrichedTasks);
+
+      const taskPromises = projectList.map(p => getAllTasks(p.id));
+      const tasksPerProject = await Promise.all(taskPromises);
+      setTasks(tasksPerProject.flat());
+      
     } catch (err) {
       console.error("Dashboard Load Error:", err);
     } finally {
@@ -70,26 +64,34 @@ export default function Dashboard() {
   }
 
   async function handleSaveProject(projectData: Project) {
-    if (!token) return;
     try {
       if (editingProject?.id) {
-        updateProject(editingProject.id, projectData, token);
+        // ✅ Fixed: Explicit payload to avoid sending 'id' in the body
+        await updateProject(editingProject.id, {
+          name: projectData.name,
+          description: projectData.description,
+          priority: projectData.priority,
+          teamLeader: projectData.teamLeader
+        });
       } else {
-        addProject(projectData, token);
+        await addProject(projectData as Partial<Project>);
       }
       setEditingProject(null);
       setShowCreateProject(false);
-      loadDashboard();
+      await loadDashboard();
     } catch (err) {
       console.error("Save Project Error:", err);
     }
   }
 
-  async function handleDeleteProject(id: string) {
-    if (!token) return;
+  async function handleDeleteProject(id: number) {
     if (window.confirm("Delete this project? This will also remove associated tasks.")) {
-      deleteProject(id, token);
-      loadDashboard();
+      try {
+        await deleteProject(id);
+        await loadDashboard();
+      } catch (err) {
+        console.error("Delete Project Error:", err);
+      }
     }
   }
 
@@ -126,8 +128,6 @@ export default function Dashboard() {
   }, [tasks]);
 
   const progress = stats.total === 0 ? 0 : Math.round((stats.completed / stats.total) * 100);
-
-  if (!token) return null;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0b1220] p-6 md:p-10 transition-colors duration-300">
@@ -253,27 +253,19 @@ export default function Dashboard() {
                 </span>
               </h2>
               <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 group hover:border-indigo-500/50 hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-300 active:scale-[0.98]">
-  <SlidersHorizontal 
-    size={14} 
-    className="text-slate-400 group-hover:text-indigo-500 transition-colors duration-300 mr-2" 
-  />
-  
-  <select 
-    value={sortBy} 
-    onChange={(e) => setSortBy(e.target.value)}
-    className="appearance-none bg-transparent py-2.5 pr-8 outline-none text-[10px] font-black text-slate-600 dark:text-slate-200 cursor-pointer uppercase tracking-widest relative z-10"
-  >
-    <option value="newest" className="dark:bg-slate-900">Newest First</option>
-    <option value="priority-desc" className="dark:bg-slate-900">Priority: High to Low</option>
-    <option value="priority-asc" className="dark:bg-slate-900">Priority: Low to High</option>
-    <option value="name-asc" className="dark:bg-slate-900">Name: A - Z</option>
-  </select>
-
-     <ChevronDown 
-    size={14} 
-    className="text-slate-400 -ml-6 pointer-events-none group-hover:text-indigo-500 group-hover:translate-y-0.5 transition-all duration-300" 
-  />
-</div>
+                <SlidersHorizontal size={14} className="text-slate-400 group-hover:text-indigo-500 transition-colors duration-300 mr-2" />
+                <select 
+                  value={sortBy} 
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="appearance-none bg-transparent py-2.5 pr-8 outline-none text-[10px] font-black text-slate-600 dark:text-slate-200 cursor-pointer uppercase tracking-widest relative z-10"
+                >
+                  <option value="newest" className="dark:bg-slate-900">Newest First</option>
+                  <option value="priority-desc" className="dark:bg-slate-900">Priority: High to Low</option>
+                  <option value="priority-asc" className="dark:bg-slate-900">Priority: Low to High</option>
+                  <option value="name-asc" className="dark:bg-slate-900">Name: A - Z</option>
+                </select>
+                <ChevronDown size={14} className="text-slate-400 -ml-6 pointer-events-none group-hover:text-indigo-500 group-hover:translate-y-0.5 transition-all duration-300" />
+              </div>
             </div>
 
             {processedProjects.length > 0 ? (
@@ -281,8 +273,8 @@ export default function Dashboard() {
                 {processedProjects.map((p) => (
                   <ProjectCard 
                     key={p.id} 
-                    project={p as any} 
-                    onEdit={(proj) => setEditingProject(proj as any)} 
+                    project={p} 
+                    onEdit={(proj) => setEditingProject(proj)} 
                     onDelete={handleDeleteProject} 
                   />
                 ))}
@@ -301,7 +293,7 @@ export default function Dashboard() {
 
         {(showCreateProject || editingProject) && (
           <CreateProjectModal 
-            editingProject={editingProject} 
+            editingProject={editingProject as any} 
             onClose={() => { setShowCreateProject(false); setEditingProject(null); }} 
             onSaved={handleSaveProject} 
           />

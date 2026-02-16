@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { getTaskComments } from "../services/taskService";
 import { PRIORITIES } from "../utils/constants";
 
 /* =======================
@@ -9,17 +8,19 @@ import { PRIORITIES } from "../utils/constants";
 type Status = "todo" | "in-progress" | "done";
 type Priority = "high" | "medium" | "low";
 
+interface Comment {
+  id?: number;
+  text?: string;
+  author?: string;
+}
+
 interface Task {
   id: string;
   title: string;
   status: Status;
   priority: Priority;
   projectId: string;
-}
-
-interface Comment {
-  id?: string;
-  body?: string;
+  comments?: Comment[]; // ✅ now coming from DB JSON column
 }
 
 /* =======================
@@ -33,16 +34,15 @@ export default function TaskDetails({ task }: { task: Task }) {
   const p = PRIORITIES[task.priority] || PRIORITIES.medium;
 
   useEffect(() => {
-    async function loadComments() {
-      try {
-        const data = await getTaskComments(task.id);
-        setComments(data);
-      } finally {
-        setLoading(false);
-      }
+    // ✅ Instead of API call, read from task directly
+    if (task.comments && Array.isArray(task.comments)) {
+      setComments(task.comments);
+    } else {
+      setComments([]);
     }
-    loadComments();
-  }, [task.id]);
+
+    setLoading(false);
+  }, [task]);
 
   return (
     <div className="text-slate-900 dark:text-white">
@@ -68,7 +68,7 @@ export default function TaskDetails({ task }: { task: Task }) {
         </span>
 
         <span className="bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full text-xs font-mono">
-          ID: {task.projectId}
+          Project: {task.projectId}
         </span>
       </div>
 
@@ -82,6 +82,22 @@ export default function TaskDetails({ task }: { task: Task }) {
 
       {!loading && comments.length === 0 && (
         <p className="text-slate-400 text-sm">No comments found.</p>
+      )}
+
+      {!loading && comments.length > 0 && (
+        <div className="space-y-3">
+          {comments.map((comment) => (
+            <div
+              key={comment.id}
+              className="bg-slate-100 dark:bg-slate-800 p-3 rounded-lg text-sm"
+            >
+              <div className="font-semibold text-xs mb-1">
+                {comment.author || "User"}
+              </div>
+              <div>{comment.text}</div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

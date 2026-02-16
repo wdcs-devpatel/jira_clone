@@ -19,7 +19,7 @@ export default function Login() {
     setError("");
     setIsLoading(true);
 
-    // Basic Validation
+    
     if (password.length < 6) {
       setError("Password must be at least 6 characters.");
       setIsLoading(false);

@@ -13,7 +13,8 @@ import { PRIORITIES } from "../utils/constants";
 type Priority = "high" | "medium" | "low";
 
 interface Project {
-  id: string;
+  // ✅ Fixed: ID is a number to match PostgreSQL and other components
+  id: number;
   name: string;
   description?: string;
   priority: Priority;
@@ -23,7 +24,8 @@ interface Project {
 interface ProjectCardProps {
   project: Project;
   onEdit: (project: Project) => void;
-  onDelete: (id: string) => void;
+  // ✅ Fixed: onDelete expects a number
+  onDelete: (id: number) => void;
 }
 
 export default function ProjectCard({
@@ -42,12 +44,9 @@ export default function ProjectCard({
   return (
     <div
       onClick={() => navigate(`/kanban/${project.id}`)}
-      /* FIX: Removed dark:bg-slate-900/80 (opacity) and dark:backdrop-blur-xl.
-         Using solid dark:bg-slate-900 prevents the index.css gradient from showing through in light mode.
-      */
       className="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 cursor-pointer hover:shadow-2xl hover:shadow-indigo-500/10 dark:hover:border-indigo-500/50 transition-all duration-300 flex flex-col h-full overflow-hidden"
     >
-      {/* Dynamic Glow Flare - Only visible on hover */}
+      {/* Dynamic Glow Flare */}
       <div className="absolute -top-12 -right-12 w-32 h-32 bg-indigo-600/10 blur-[60px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
       <div className="flex justify-between items-start mb-4 relative z-10">
@@ -86,7 +85,6 @@ export default function ProjectCard({
           {p.label}
         </div>
 
-        {/* Team Leader Display */}
         {project.teamLeader && (
           <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
             <UserCheck size={14} className="text-indigo-500" />
@@ -99,7 +97,8 @@ export default function ProjectCard({
         <div className="flex flex-col">
           <span className="text-[9px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-tighter">PROJECT REF</span>
           <span className="text-[11px] font-mono font-bold text-slate-600 dark:text-slate-300">
-            #{project.id?.slice(-6).toUpperCase()}
+            {/* ✅ Fixed: ID is converted to String before calling slice */}
+            #{String(project.id).padStart(6, '0').toUpperCase()}
           </span>
         </div>
         

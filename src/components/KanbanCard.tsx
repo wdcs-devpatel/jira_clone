@@ -23,7 +23,6 @@ export default function KanbanCard({ task, onEdit, onDelete, onDragStart, assign
       draggable 
       onDragStart={(e) => onDragStart(e, task.id)} 
       onClick={() => onEdit(task)}
-      /* FIX: Changed dark:bg-slate-800 to a solid dark:bg-slate-900 and increased light-mode border visibility */
       className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-300 dark:border-slate-800 shadow-sm hover:shadow-lg dark:hover:border-indigo-500/50 transition-all group relative cursor-grab active:cursor-grabbing"
     >
       <div className="flex justify-between items-start mb-3">

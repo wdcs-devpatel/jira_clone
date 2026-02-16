@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, MessageSquare, CheckSquare, ShieldCheck, User as UserIcon, Plus, Pencil, Trash2, X } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
+import { ArrowLeft, MessageSquare, Pencil, Trash2, X } from "lucide-react";
 
 import {
   getAllTasks,
@@ -12,11 +11,10 @@ import {
 } from "../services/taskService";
 
 import { getUsers } from "../services/userService";
-import { enrichTasksWithProject } from "../utils/projectHelper";
 import { PRIORITY_LIST, Priority } from "../utils/constants";
 
 import KanbanColumn from "../components/KanbanColumn";
-import { Task, TaskId } from "../interfaces/task/task.interface";
+import { TaskId } from "../interfaces/task/task.interface";
 
 type Status = "todo" | "in-progress" | "done";
 
@@ -28,14 +26,13 @@ const COLUMNS: { key: Status; title: string }[] = [
 
 export default function KanbanBoard() {
   const { projectId } = useParams<{ projectId: string }>();
-  const { token } = useAuth();
-
+  const numericProjectId = projectId ? Number(projectId) : null;
+  
   const [tasks, setTasks] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingTask, setEditingTask] = useState<any>(null);
 
-  // Modal UI State
   const [activeTab, setActiveTab] = useState<"general" | "comments">("general");
 
   const [title, setTitle] = useState("");
@@ -50,20 +47,29 @@ export default function KanbanBoard() {
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
 
   useEffect(() => {
-    if (token && projectId) loadInitialData();
-  }, [projectId, token]);
+    if (numericProjectId !== null && !isNaN(numericProjectId)) {
+      loadInitialData();
+    }
+  }, [numericProjectId]);
 
   async function loadInitialData() {
-    const fetchedUsers = await getUsers();
-    setUsers(fetchedUsers);
-    await loadTasks();
+    try {
+      const fetchedUsers = await getUsers();
+      setUsers(fetchedUsers);
+      await loadTasks();
+    } catch (err) {
+      console.error("Initial Load Error:", err);
+    }
   }
 
   async function loadTasks() {
-    if (!token) return;
-    const all = await getAllTasks(token);
-    const enriched = await enrichTasksWithProject(all, token);
-    setTasks(enriched.filter((t: any) => String(t.projectId) === String(projectId)));
+    if (numericProjectId === null || isNaN(numericProjectId)) return;
+    try {
+      const fetchedTasks = await getAllTasks(numericProjectId);
+      setTasks(fetchedTasks);
+    } catch (err) {
+      console.error("Load Tasks Error:", err);
+    }
   }
 
   const handleDragStart = (e: React.DragEvent, taskId: TaskId) => {
@@ -75,12 +81,13 @@ export default function KanbanBoard() {
   const onDrop = async (e: React.DragEvent, newStatus: Status) => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData("taskId");
-    if (taskId && token) {
+    if (taskId) {
       setTasks(prev => prev.map(t => String(t.id) === taskId ? { ...t, status: newStatus } : t));
       try {
-        await updateTaskStatus(taskId, newStatus, token);
+        await updateTaskStatus(taskId, newStatus);
         await loadTasks();
       } catch (error) {
+        console.error("Drop Error:", error);
         await loadTasks();
       }
     }
@@ -119,33 +126,41 @@ export default function KanbanBoard() {
   };
 
   async function handleSave() {
-    if (!title.trim() || !token) return;
+    if (!title.trim() || numericProjectId === null || isNaN(numericProjectId)) return;
 
     const taskData = {
       title,
       description,
       priority,
       status: targetStatus,
-      projectId,
+      projectId: numericProjectId, 
       assigneeId: assigneeId ? Number(assigneeId) : null,
       subtasks,
       comments,
     };
 
-    if (editingTask) {
-      await updateTask(editingTask.id, taskData, token);
-    } else {
-      await addTask(taskData as any, token);
+    try {
+      if (editingTask) {
+        await updateTask(editingTask.id, taskData);
+      } else {
+        await addTask(taskData as any, numericProjectId); 
+      }
+      closeModal();
+      await loadTasks();
+    } catch (error) {
+      console.error("Save Task Error:", error);
     }
-
-    closeModal();
-    await loadTasks();
   }
 
+  // ✅ Fixed: Removed String() conversion. TaskId is passed as-is.
   async function handleDelete(taskId: TaskId) {
-    if (!token || !window.confirm("Are you sure?")) return;
-    await deleteTask(String(taskId), token);
-    await loadTasks();
+    if (!window.confirm("Are you sure?")) return;
+    try {
+      await deleteTask(taskId);
+      await loadTasks();
+    } catch (error) {
+      console.error("Delete Task Error:", error);
+    }
   }
 
   const addSubtask = () => {
@@ -190,7 +205,6 @@ export default function KanbanBoard() {
 
       {showModal && (
         <div className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/90 backdrop-blur-sm flex items-center justify-center z-[100] p-4 overflow-y-auto">
-          {/* FIX: Changed bg-[#0f172a] to bg-white dark:bg-slate-900 */}
           <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-slate-800/60 my-auto transition-all duration-300">
             
             <div className="flex justify-between items-center mb-6">
@@ -203,7 +217,6 @@ export default function KanbanBoard() {
               </button>
             </div>
 
-            {/* Tab Navigation */}
             <div className="flex gap-4 mb-8 border-b border-slate-100 dark:border-slate-800/50 pb-2">
               <button 
                 onClick={() => setActiveTab("general")}

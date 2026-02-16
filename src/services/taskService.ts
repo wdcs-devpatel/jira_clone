@@ -1,109 +1,102 @@
-import { API_BASE } from "../utils/constants";
-
 /* =======================
-   Local helpers only
-   (NO interfaces here)
+   Backend Connected Task Service
+   Project-based API
 ======================= */
+
+const BASE_URL = "http://localhost:5000/api/tasks";
 
 type Status = "todo" | "in-progress" | "done";
-type Priority = "high" | "medium" | "low";
 
-function getTaskKey(token: string | null) {
-  return token ? `jira_tasks_${token}` : null;
-}
+/* =======================
+   GET TASKS BY PROJECT
+======================= */
+// ✅ Fixed: Now correctly uses projectId as a number parameter
+export async function getAllTasks(projectId: number) {
+  const res = await fetch(`${BASE_URL}/project/${projectId}`);
 
-function safeGet(token: string | null): any[] {
-  try {
-    const key = getTaskKey(token);
-    if (!key) return [];
-    const data = JSON.parse(localStorage.getItem(key) || "[]");
-    return Array.isArray(data) ? data : [];
-  } catch {
-    return [];
+  if (!res.ok) {
+    throw new Error("Failed to fetch tasks");
   }
-}
 
-function safeSet(data: any[], token: string | null) {
-  try {
-    const key = getTaskKey(token);
-    if (key) localStorage.setItem(key, JSON.stringify(data));
-  } catch {}
+  return res.json();
 }
 
 /* =======================
-   Task APIs (LOOSE)
+   CREATE TASK IN PROJECT
 ======================= */
+export async function addTask(task: any, projectId: number) {
+  const res = await fetch(`${BASE_URL}/project/${projectId}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(task),
+  });
 
-export async function getAllTasks(token: string | null) {
-  const cached = safeGet(token);
-  if (cached.length > 0) return cached;
+  if (!res.ok) {
+    throw new Error("Failed to create task");
+  }
 
-  const res = await fetch(`${API_BASE}/todos?limit=30`);
-  const data = await res.json();
-
-  const priorities: Priority[] = ["high", "medium", "low"];
-
-  const tasks = data.todos.map((t: any, index: number) => ({
-    id: String(t.id),
-    title: t.todo,
-    status: t.completed ? "done" : "todo",
-    priority: priorities[Math.floor(Math.random() * priorities.length)],
-    assigneeId: (index % 10) + 1,
-  }));
-
-  safeSet(tasks, token);
-  return tasks;
+  return res.json();
 }
 
-export async function addTask(task: any, token: string | null) {
-  const tasks = safeGet(token);
-
-  const newTask = {
-    ...task,
-    id: `TASK-${Date.now()}`,
-  };
-
-  const updated = [...tasks, newTask];
-  safeSet(updated, token);
-  return newTask;
-}
-
+/* =======================
+   UPDATE FULL TASK
+======================= */
 export async function updateTask(
   taskId: string | number,
-  updates: any,
-  token: string | null
+  updates: any
 ) {
-  const tasks = safeGet(token);
-  const updated = tasks.map((t) =>
-    String(t.id) === String(taskId) ? { ...t, ...updates } : t
-  );
-  safeSet(updated, token);
-  return updated;
-}
+  const res = await fetch(`${BASE_URL}/${taskId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(updates),
+  });
 
-export function updateTaskStatus(
-  taskId: string | number,
-  status: Status,
-  token: string | null
-) {
-  return updateTask(taskId, { status }, token);
-}
-
-export async function deleteTask(taskId: string | number, token: string | null) {
-  const tasks = safeGet(token);
-  const updated = tasks.filter((t) => String(t.id) !== String(taskId));
-  safeSet(updated, token);
-  return updated;
-}
-
-export async function getTaskComments(taskId: string | number) {
-  if (String(taskId).startsWith("TASK-")) return [];
-
-  try {
-    const res = await fetch(`${API_BASE}/comments/post/${taskId}`);
-    const data = await res.json();
-    return data.comments || [];
-  } catch {
-    return [];
+  if (!res.ok) {
+    throw new Error("Failed to update task");
   }
+
+  return res.json();
+}
+
+/* =======================
+   UPDATE STATUS ONLY
+======================= */
+export async function updateTaskStatus(
+  taskId: string | number,
+  status: Status
+) {
+  const res = await fetch(`${BASE_URL}/${taskId}/status`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ status }),
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to update status");
+  }
+
+  return res.json();
+}
+
+/* =======================
+   DELETE TASK
+======================= */
+export async function deleteTask(
+  taskId: string | number
+) {
+  const res = await fetch(`${BASE_URL}/${taskId}`, {
+    method: "DELETE",
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to delete task");
+  }
+
+  return res.json();
 }

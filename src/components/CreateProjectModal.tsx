@@ -1,15 +1,16 @@
 import { useState, useEffect, FormEvent } from "react";
 import { PRIORITY_LIST } from "../utils/constants";
-import { UserCheck } from "lucide-react"; // Added icon for leader field
+import { UserCheck } from "lucide-react";
 
 type Priority = "high" | "medium" | "low";
 
 interface Project {
-  id?: string;
+  // ✅ Fixed: Changed id to number
+  id?: number;
   name: string;
   description?: string;
   priority: Priority;
-  teamLeader?: string; // Added to interface
+  teamLeader?: string;
 }
 
 interface CreateProjectModalProps {
@@ -26,14 +27,14 @@ export default function CreateProjectModal({
   const [name, setName] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [priority, setPriority] = useState<Priority>("medium");
-  const [teamLeader, setTeamLeader] = useState<string>(""); // New State
+  const [teamLeader, setTeamLeader] = useState<string>("");
 
   useEffect(() => {
     if (editingProject) {
       setName(editingProject.name);
       setDescription(editingProject.description || "");
       setPriority(editingProject.priority || "medium");
-      setTeamLeader(editingProject.teamLeader || ""); // Set editing value
+      setTeamLeader(editingProject.teamLeader || "");
     } else {
       setName("");
       setDescription("");
@@ -49,7 +50,7 @@ export default function CreateProjectModal({
       name, 
       description, 
       priority,
-      teamLeader // Pass leader to save function
+      teamLeader
     });
   }
 
@@ -74,7 +75,6 @@ export default function CreateProjectModal({
             />
           </div>
 
-          {/* New Team Leader Input */}
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2 tracking-widest">
               Team Leader / Assigned To

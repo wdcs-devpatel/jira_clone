@@ -2,20 +2,41 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 
+const { connectDB } = require("./config/db");
+const { sequelize } = require("./models");
+
+const taskRoutes = require("./routes/taskRoutes");
+const projectRoutes = require("./routes/projectRoutes");
+
 const app = express();
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Test route
+/* ROUTES */
+app.use("/api/tasks", taskRoutes);
+app.use("/api/projects", projectRoutes);
+
 app.get("/", (req, res) => {
   res.send("Backend is running 🚀");
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = 5000;
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
-    
+const startServer = async () => {
+  try {
+    await connectDB();
+
+    await sequelize.sync({ alter: true });
+    console.log("Database synced successfully");
+
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+
+  } catch (err) {
+    console.error("Server start error:", err);
+  }
+};
+
+startServer();
