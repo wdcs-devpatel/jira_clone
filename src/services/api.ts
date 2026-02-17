@@ -1,5 +1,4 @@
-export const API_BASE = "https://dummyjson.com";
-const BASE_URL = "http://localhost:5000/api";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export const getTasks = async () => {
   const response = await fetch(`${BASE_URL}/tasks`);

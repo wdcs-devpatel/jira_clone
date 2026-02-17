@@ -1,24 +1,86 @@
-# Logs
+############################
+# ENV FILES
+############################
+.env
+.env.*
+!.env.example
+
+############################
+# NODE MODULES
+############################
+node_modules/
+*/node_modules/
+
+############################
+# BUILD FILES
+############################
+dist/
+build/
+coverage/
+
+############################
+# LOG FILES
+############################
 logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+############################
+# OS FILES
+############################
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+Thumbs.db
+
+############################
+# IDE FILES
+############################
+.vscode/
+.idea/
+*.swp
+*.swo
+
+############################
+# TYPESCRIPT
+############################
+*.tsbuildinfo
+
+############################
+# CACHE
+############################
+.cache/
+.tmp/
+.temp/
+
+############################
+# DATABASE FILES (if any local)
+############################
+*.sqlite
+*.db
+
+############################
+# SECRETS
+############################
+secret.*
+private.key
+*.pem
+*.crt
+
+############################
+# VITE
+############################
+.vite
+
+############################
+# TEST
+############################
+jest-cache/
+coverage/
+
+############################
+# OPTIONAL (UNCOMMENT IF NEEDED)
+############################
+# package-lock.json
+# yarn.lock

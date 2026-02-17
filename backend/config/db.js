@@ -1,12 +1,14 @@
 const { Sequelize } = require("sequelize");
+const { DB } = require("./env.config");
 
 const sequelize = new Sequelize(
-  "jira_clone",      // database name
-  "postgres",        // username
-  "1234",    // password
+  DB.name,
+  DB.user,
+  DB.pass,
   {
-    host: "localhost",
-    dialect: "postgres",
+    host: DB.host,
+    dialect: DB.dialect,
+    logging: false
   }
 );
 
@@ -15,7 +17,8 @@ const connectDB = async () => {
     await sequelize.authenticate();
     console.log("PostgreSQL Connected");
   } catch (error) {
-    console.error("Unable to connect:", error);
+    console.error("DB Connection Failed:", error.message);
+    process.exit(1);
   }
 };
 

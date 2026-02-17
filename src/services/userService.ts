@@ -1,4 +1,4 @@
-const API_BASE = "https://dummyjson.com";
+const API_BASE = import.meta.env.VITE_DUMMY_API;
 
 type UserId = string | number;
 
