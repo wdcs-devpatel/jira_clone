@@ -28,16 +28,16 @@ export default function Login() {
         email: data.email,
       };
 
-      // 1. Update AuthContext
-      login(data.accessToken, apiUser); 
-      
-      // 2. FIXED: Store token separately for service headers
-      localStorage.setItem("token", data.accessToken);
-
-      toast.success(`Welcome back, ${data.username}!`);
-      navigate("/dashboard");
+      // Ensure we are using 'token' as returned by the backend
+      if (data.token) {
+        login(data.token, apiUser); 
+        toast.success(`Welcome back, ${data.username}!`);
+        navigate("/dashboard");
+      } else {
+        throw new Error("No token received from server");
+      }
     } catch (err: any) {
-      const msg = err.response?.data?.message || "Invalid credentials.";
+      const msg = err.response?.data?.message || err.message || "Invalid credentials.";
       setError(msg);
       toast.error("Login failed");
     } finally {
@@ -96,7 +96,6 @@ export default function Login() {
           </button>
         </form>
 
-        {/* SIGNUP LINK */}
         <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-6 font-medium">
           Don’t have an account?{" "}
           <button
@@ -107,7 +106,6 @@ export default function Login() {
             Sign up
           </button>
         </p>
-
       </div>
     </div>
   );

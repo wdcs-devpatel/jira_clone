@@ -1,6 +1,8 @@
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const User = require("../models/User");
-const { Op } = require("sequelize"); // FIXED: Proper import for Op
+const { Op } = require("sequelize");
+const { CONFIG } = require("../config/db");
 
 /* REGISTER */
 exports.register = async (req, res, next) => {
@@ -25,7 +27,9 @@ exports.register = async (req, res, next) => {
       email: user.email
     });
 
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 };
 
 /* LOGIN */
@@ -35,7 +39,7 @@ exports.login = async (req, res, next) => {
 
     const user = await User.findOne({
       where: {
-        [Op.or]: [ // FIXED: Cleaner Op usage
+        [Op.or]: [
           { email: identifier },
           { username: identifier }
         ]
@@ -46,16 +50,24 @@ exports.login = async (req, res, next) => {
       return res.status(401).json({ message: "Invalid credentials" });
 
     const ok = await bcrypt.compare(password, user.password);
-
     if (!ok)
       return res.status(401).json({ message: "Invalid credentials" });
+
+    /* JWT TOKEN */
+    const token = jwt.sign(
+      { id: user.id },
+      CONFIG.JWT_SECRET,
+      { expiresIn: CONFIG.JWT_EXPIRES_IN }
+    );
 
     res.json({
       id: user.id,
       username: user.username,
       email: user.email,
-      accessToken: `token-${user.id}`
+      token
     });
 
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 };

@@ -1,8 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 
-const { PORT } = require("./config/env.config");
-const { connectDB } = require("./config/db");
+const { connectDB, CONFIG } = require("./config/db");
 const { sequelize } = require("./models");
 
 const taskRoutes = require("./routes/taskRoutes");
@@ -34,8 +33,8 @@ const startServer = async () => {
     await sequelize.sync();
     console.log("Database synced");
 
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+    app.listen(CONFIG.PORT, () => {
+      console.log(`Server running on port ${CONFIG.PORT}`);
     });
 
   } catch (err) {

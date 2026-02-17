@@ -1,17 +1,59 @@
+require("dotenv").config();
 const { Sequelize } = require("sequelize");
-const { DB } = require("./env.config");
 
+/* ===============================
+   VALIDATE ENV VARIABLES
+=============================== */
+const required = [
+  "PORT",
+  "DB_NAME",
+  "DB_USER",
+  "DB_PASS",
+  "DB_HOST",
+  "DB_DIALECT",
+  "JWT_SECRET"
+];
+
+required.forEach(key => {
+  if (!process.env[key]) {
+    console.error(`Missing ENV variable: ${key}`);
+    process.exit(1);
+  }
+});
+
+/* ===============================
+   CONFIG OBJECT
+=============================== */
+const CONFIG = {
+  PORT: process.env.PORT,
+  DB: {
+    name: process.env.DB_NAME,
+    user: process.env.DB_USER,
+    pass: process.env.DB_PASS,
+    host: process.env.DB_HOST,
+    dialect: process.env.DB_DIALECT,
+  },
+  JWT_SECRET: process.env.JWT_SECRET,
+  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "1h"
+};
+
+/* ===============================
+   SEQUELIZE INSTANCE
+=============================== */
 const sequelize = new Sequelize(
-  DB.name,
-  DB.user,
-  DB.pass,
+  CONFIG.DB.name,
+  CONFIG.DB.user,
+  CONFIG.DB.pass,
   {
-    host: DB.host,
-    dialect: DB.dialect,
+    host: CONFIG.DB.host,
+    dialect: CONFIG.DB.dialect,
     logging: false
   }
 );
 
+/* ===============================
+   DB CONNECT FUNCTION
+=============================== */
 const connectDB = async () => {
   try {
     await sequelize.authenticate();
@@ -22,4 +64,8 @@ const connectDB = async () => {
   }
 };
 
-module.exports = { sequelize, connectDB };
+module.exports = {
+  sequelize,
+  connectDB,
+  CONFIG
+};
