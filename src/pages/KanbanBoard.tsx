@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, MessageSquare, Pencil, Trash2, X } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 import {
   getAllTasks,
@@ -25,6 +26,7 @@ const COLUMNS: { key: Status; title: string }[] = [
 ];
 
 export default function KanbanBoard() {
+  const { user } = useAuth();
   const { projectId } = useParams<{ projectId: string }>();
   const numericProjectId = projectId ? Number(projectId) : null;
   
@@ -55,7 +57,9 @@ export default function KanbanBoard() {
   async function loadInitialData() {
     try {
       const fetchedUsers = await getUsers();
-      setUsers(fetchedUsers);
+      // STEP 4: Sort so current user is first
+      const sorted = fetchedUsers.sort((a: any) => a.id === user?.id ? -1 : 1);
+      setUsers(sorted);
       await loadTasks();
     } catch (err) {
       console.error("Initial Load Error:", err);
@@ -110,7 +114,8 @@ export default function KanbanBoard() {
       setDescription("");
       setPriority("medium");
       setTargetStatus(defaultStatus);
-      setAssigneeId("");
+      // STEP 4: Default assign to self
+      setAssigneeId(String(user?.id || ""));
       setSubtasks([]);
       setComments([]);
     }
@@ -152,7 +157,6 @@ export default function KanbanBoard() {
     }
   }
 
-  // ✅ Fixed: Removed String() conversion. TaskId is passed as-is.
   async function handleDelete(taskId: TaskId) {
     if (!window.confirm("Are you sure?")) return;
     try {
@@ -173,7 +177,7 @@ export default function KanbanBoard() {
       setComments(comments.map(c => c.id === editingCommentId ? { ...c, text: newComment } : c));
       setEditingCommentId(null);
     } else {
-      setComments([...comments, { id: Date.now(), text: newComment, author: "Me" }]);
+      setComments([...comments, { id: Date.now(), text: newComment, author: user?.username || "Me" }]);
     }
     setNewComment("");
   };

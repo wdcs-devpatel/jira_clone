@@ -5,7 +5,7 @@ exports.createProject = async (req, res, next) => {
   try {
     const project = await Project.create({
       ...req.body,
-      userId: req.user.id // Ownership assigned here
+      userId: req.user.id // Security: Forced ownership from JWT token
     });
     res.status(201).json(project);
   } catch (err) {
@@ -16,6 +16,7 @@ exports.createProject = async (req, res, next) => {
 /* GET ALL PROJECTS (USER SPECIFIC) */
 exports.getProjects = async (req, res, next) => {
   try {
+    // Only fetch projects belonging to the logged-in user
     const projects = await Project.findAll({
       where: { userId: req.user.id }, 
       order: [["createdAt", "DESC"]],
@@ -30,10 +31,16 @@ exports.getProjects = async (req, res, next) => {
 exports.getProject = async (req, res, next) => {
   try {
     const project = await Project.findOne({
-      where: { id: req.params.id, userId: req.user.id }
+      where: { 
+        id: req.params.id, 
+        userId: req.user.id // Security check
+      }
     });
-    if (!project)
+    
+    if (!project) {
       return res.status(404).json({ message: "Project not found or unauthorized" });
+    }
+    
     res.json(project);
   } catch (err) {
     next(err);
@@ -44,7 +51,10 @@ exports.getProject = async (req, res, next) => {
 exports.updateProject = async (req, res, next) => {
   try {
     const project = await Project.findOne({
-      where: { id: req.params.id, userId: req.user.id }
+      where: { 
+        id: req.params.id, 
+        userId: req.user.id // Only owner can update
+      }
     });
 
     if (!project) {
@@ -68,11 +78,15 @@ exports.updateProject = async (req, res, next) => {
 exports.deleteProject = async (req, res, next) => {
   try {
     const project = await Project.findOne({
-      where: { id: req.params.id, userId: req.user.id }
+      where: { 
+        id: req.params.id, 
+        userId: req.user.id // Only owner can delete
+      }
     });
 
-    if (!project)
+    if (!project) {
       return res.status(404).json({ message: "Project not found or unauthorized" });
+    }
 
     await project.destroy();
     res.json({ message: "Project deleted successfully" });

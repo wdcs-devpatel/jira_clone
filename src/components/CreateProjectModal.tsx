@@ -3,22 +3,24 @@ import { PRIORITY_LIST } from "../utils/constants";
 import { UserCheck } from "lucide-react";
 import { Project } from "../services/projectService";
 import { TaskPriority } from "../interfaces";
+import { useAuth } from "../context/AuthContext";
 
 interface CreateProjectModalProps {
   editingProject: Project | null;
   onClose: () => void;
-  onSaved: (project: Project) => void;
+  onSaved: (project: any) => void;
 }
 
 export default function CreateProjectModal({
   editingProject,
-  onClose,  
+  onClose,
   onSaved,
 }: CreateProjectModalProps) {
+  const { user } = useAuth();
   const [name, setName] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
-  const [teamLeader, setTeamLeader] = useState<string>("");
+  const [teamLeader, setTeamLeader] = useState<string>(user?.username || "");
 
   useEffect(() => {
     if (editingProject) {
@@ -30,23 +32,20 @@ export default function CreateProjectModal({
       setName("");
       setDescription("");
       setPriority("medium");
-      setTeamLeader("");
+      setTeamLeader(user?.username || "");
     }
-  }, [editingProject]);
+  }, [editingProject, user]);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     
-    /**
-     * FIXED: Using the "Stability Upgrade" spread.
-     * Only includes 'id' in the object if editingProject exists.
-     */
     onSaved({ 
       ...(editingProject && { id: editingProject.id }),
       name, 
       description, 
       priority,
-      teamLeader
+      teamLeader,
+      userId: user?.id // STEP 5: Sending creator ID
     });
   }
 

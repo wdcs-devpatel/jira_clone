@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const auth = require("../middleware/auth"); // Import middleware
+const auth = require("../middleware/auth"); 
 const {
   createProject,
   getProjects,
@@ -9,7 +9,6 @@ const {
   deleteProject,
 } = require("../controllers/projectController");
 
-// Apply auth middleware to ALL routes in this file
 router.use(auth);
 
 router.route("/")

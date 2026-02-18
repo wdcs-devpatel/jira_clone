@@ -1,16 +1,15 @@
 import { useEffect, useState } from "react";
 import { getUsers } from "../services/userService";
 import Modal from "../components/Modal";
-import { Mail, Phone, Building2, UserCircle2 } from "lucide-react";
-
+import { Mail, Phone, Building2, UserCircle2, Shield } from "lucide-react";
 
 interface User {
-  id: string;
+  id: string | number;
   name: string;
-  avatar: string;
+  avatar?: string;
+  email?: string;
+  phone?: string;
 }
-
-
 
 export default function TeamMembers() {
   const [users, setUsers] = useState<User[]>([]);
@@ -42,47 +41,85 @@ export default function TeamMembers() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0b1220] p-6 md:p-8 transition-colors duration-300">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0b1220] p-6 md:p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8 border-b border-slate-200 dark:border-slate-800 pb-6">
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+
+        {/* HEADER */}
+        <div className="mb-10">
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white">
             Team Members
           </h1>
-          <p className="text-slate-600 dark:text-slate-400 mt-2">
+          <p className="text-slate-500 dark:text-slate-400 mt-2">
             View and manage your project collaborators.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {users.map((user) => (
-            <div
-              key={user.id}
-              onClick={() => setSelectedUser(user)}
-              className="bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 rounded-2xl p-5 cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-500/50 hover:shadow-lg transition-all group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <img
-                    src={user.avatar}
-                    alt={user.name}
-                    className="w-14 h-14 rounded-full border-2 border-slate-100 dark:border-slate-700 group-hover:border-indigo-500 transition-colors object-cover"
-                  />
-                  <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-white dark:border-slate-800 rounded-full" />
-                </div>
+        {/* GRID */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-7">
 
-                <div className="overflow-hidden">
-                  <p className="font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">
-                    {user.name}
-                  </p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 truncate lowercase">
-                    @{user.name.replace(/\s+/g, "").toLowerCase()}
-                  </p>
+          {users.map((user) => {
+            const avatar =
+              user.avatar ||
+              `https://api.dicebear.com/7.x/initials/svg?seed=${user.name}`;
+
+            return (
+              <div
+                key={user.id}
+                onClick={() => setSelectedUser(user)}
+                className="
+                group cursor-pointer rounded-3xl p-[1px]
+                bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500
+                hover:shadow-xl hover:scale-[1.02]
+                transition-all duration-300
+                "
+              >
+                <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 h-full border border-slate-200 dark:border-slate-800">
+
+                  {/* TOP */}
+                  <div className="flex items-center gap-4">
+
+                    {/* AVATAR */}
+                    <div className="relative">
+                      <img
+                        src={avatar}
+                        alt={user.name}
+                        className="w-16 h-16 rounded-2xl object-cover shadow-md"
+                      />
+
+                      {/* online dot */}
+                      <span className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full" />
+                    </div>
+
+                    {/* INFO */}
+                    <div>
+                      <p className="font-bold text-lg text-slate-900 dark:text-white group-hover:text-indigo-600 transition">
+                        {user.name}
+                      </p>
+
+                      <p className="text-sm text-slate-400">
+                        @{user.name.toLowerCase().replace(/\s/g, "")}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* ROLE BADGE */}
+                  <div className="mt-6 flex justify-between items-center">
+                    <span className="flex items-center gap-2 text-xs font-bold px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
+                      <Shield size={14} />
+                      Team Member
+                    </span>
+
+                    <span className="text-xs text-slate-400 font-medium">
+                      ID #{user.id}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
+        {/* MODAL */}
         <Modal isOpen={!!selectedUser} onClose={() => setSelectedUser(null)}>
           {selectedUser && <UserDetails user={selectedUser} />}
         </Modal>
@@ -91,77 +128,57 @@ export default function TeamMembers() {
   );
 }
 
-/* =======================
-   User Details
-======================= */
+/* ===================== USER DETAILS ===================== */
 
-interface UserDetailsProps {
-  user: User;
-}
+function UserDetails({ user }: { user: User }) {
+  const avatar =
+    user.avatar ||
+    `https://api.dicebear.com/7.x/initials/svg?seed=${user.name}`;
 
-function UserDetails({ user }: UserDetailsProps) {
   return (
     <div className="text-slate-900 dark:text-white p-2">
+
       <div className="flex items-center gap-5 mb-8">
         <img
-          src={user.avatar}
-          alt={user.name}
-          className="w-20 h-20 rounded-2xl border-2 border-slate-100 dark:border-slate-800 shadow-sm object-cover"
+          src={avatar}
+          className="w-24 h-24 rounded-3xl object-cover shadow-lg"
         />
+
         <div>
-          <h2 className="text-2xl font-bold">{user.name}</h2>
-          <p className="text-indigo-600 dark:text-indigo-400 font-medium">
-            Team Contributor
-          </p>
+          <h2 className="text-2xl font-black">{user.name}</h2>
+          <p className="text-indigo-500 font-semibold">Project Member</p>
         </div>
       </div>
 
       <div className="grid gap-4">
-        <DetailItem
-          icon={<Mail size={18} />}
-          label="Email"
-          value={`${user.name.split(" ")[0].toLowerCase()}@example.com`}
-        />
-        <DetailItem
-          icon={<Phone size={18} />}
-          label="Access Level"
-          value="Full Access"
-        />
-        <DetailItem
-          icon={<Building2 size={18} />}
-          label="Department"
-          value="Engineering"
-        />
-        <DetailItem
-          icon={<UserCircle2 size={18} />}
-          label="System ID"
-          value={`MEM-${user.id}`}
-        />
+
+        <Detail icon={<Mail size={18}/>} label="Email" value={user.email || "Not provided"} />
+
+        <Detail icon={<Phone size={18}/>} label="Phone" value={user.phone || "Not provided"} />
+
+        <Detail icon={<Building2 size={18}/>} label="Department" value="Engineering" />
+
+        <Detail icon={<UserCircle2 size={18}/>} label="System ID" value={`MEM-${user.id}`} />
+
       </div>
     </div>
   );
 }
 
-/* =======================
-   Detail Item
-======================= */
+/* ===================== DETAIL ROW ===================== */
 
-interface DetailItemProps {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}
-
-function DetailItem({ icon, label, value }: DetailItemProps) {
+function Detail({ icon, label, value }: any) {
   return (
-    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-950/50 rounded-xl border border-slate-100 dark:border-slate-800">
-      <div className="text-slate-400 dark:text-slate-500">{icon}</div>
+    <div className="flex items-center gap-4 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50">
+      <div className="text-indigo-500">{icon}</div>
+
       <div>
-        <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">
+        <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">
           {label}
         </p>
-        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
-          {value || "N/A"}
+
+        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+          {value}
         </p>
       </div>
     </div>

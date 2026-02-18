@@ -9,10 +9,8 @@ const {
   deleteTask,
 } = require("../controllers/taskController");
 
-// FIXED: This ensures req.user is populated for all routes below
 router.use(auth);
 
-// Task routes
 router.post("/project/:projectId", createTask);
 router.get("/project/:projectId", getTasksByProject);
 router.put("/:id", updateTask);

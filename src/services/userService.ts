@@ -1,59 +1,62 @@
-const API_BASE = import.meta.env.VITE_DUMMY_API;
+import axios from "axios";
 
-type UserId = string | number;
+const API = import.meta.env.VITE_API_BASE_URL;
 
-interface User {
-  id: UserId;
-  name?: string;
-  avatar?: string;
-  [key: string]: any;
+/**
+ * User interface reflecting the database structure
+ */
+export interface User {
+  id: number | string;
+  username?: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  name?: string; // Derived or alias for UI components
 }
 
+/**
+ * Fetches all users from the database.
+ * Used for dropdowns and assignee lists.
+ */
 export async function getUsers(): Promise<User[]> {
-  try {
-    const res = await fetch(`${API_BASE}/users?limit=10`);
-    const data = await res.json();
+  const token = localStorage.getItem("token");
 
-    return (
-      data.users?.map((u: any) => ({
-        id: u.id,
-        name: `${u.firstName} ${u.lastName}`,
-        avatar: u.image,
-      })) || []
-    );
-  } catch {
+  try {
+    const res = await axios.get(`${API}/users`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    // Maps backend 'username' to 'name' for frontend dropdown compatibility
+    return res.data.map((u: any) => ({
+      ...u,
+      name: u.username, 
+    }));
+  } catch (error) {
+    console.error("Error fetching users:", error);
     return [];
   }
 }
 
-export async function updateProfile(
-  userId: UserId,
-  profileData: Partial<User>
-): Promise<User> {
-  if (!userId) {
-    throw new Error("User ID is missing. Please log out and back in.");
+/**
+ * Updates the logged-in user's profile.
+ * Note: userId is included for compatibility, but the backend 
+ * uses the JWT token to identify the user for security.
+ */
+export async function updateProfile(userId: any, profileData: any) {
+  const token = localStorage.getItem("token");
+
+  try {
+    const res = await axios.put(`${API}/users/profile`, profileData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return res.data;
+  } catch (error: any) {
+    console.error("Error updating profile:", error);
+    throw new Error(error.response?.data?.message || "Failed to update profile");
   }
-
-  // Local users should NOT hit DummyJSON
-  const isLocal =
-    typeof userId === "string" && userId.startsWith("local-");
-
-  if (isLocal) {
-    return { ...profileData, id: userId };
-  }
-
-  const res = await fetch(`${API_BASE}/users/${userId}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(profileData),
-  });
-
-  if (!res.ok) {
-    const errorData = await res.json();
-    throw new Error(
-      errorData.message || "Update failed"
-    );
-  }
-
-  return await res.json();
 }
