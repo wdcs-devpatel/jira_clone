@@ -1,23 +1,27 @@
 const express = require("express");
 const router = express.Router();
 const auth = require("../middleware/auth"); 
-const {
-  createProject,
-  getProjects,
-  getProject,
-  updateProject,
-  deleteProject,
-} = require("../controllers/projectController");
+
+const projectController = require("../controllers/projectController");
 
 router.use(auth);
 
+/* BASE PROJECT ROUTES */
 router.route("/")
-  .get(getProjects)
-  .post(createProject);
+  .get(projectController.getProjects)
+  .post(projectController.createProject);
 
 router.route("/:id")
-  .get(getProject)
-  .put(updateProject)
-  .delete(deleteProject);
+  .get(projectController.getProject)
+  .put(projectController.updateProject)
+  .delete(projectController.deleteProject);
+
+
+/* TEAM MEMBER ROUTES */
+router.get("/:id/members", projectController.getMembers);
+router.post("/:id/members", projectController.addMember);
+
+// NEW: Delete member route
+router.delete("/:id/members/:userId", projectController.removeMember);
 
 module.exports = router;

@@ -53,6 +53,8 @@ export default function KanbanBoard() {
 
   useEffect(() => {
     if (numericProjectId !== null && !isNaN(numericProjectId)) {
+      // FIX: Sync currentProjectId to localStorage for Navbar dynamic routing
+      localStorage.setItem("currentProjectId", String(numericProjectId));
       loadInitialData();
     }
   }, [numericProjectId]);

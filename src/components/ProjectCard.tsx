@@ -36,15 +36,15 @@ export default function ProjectCard({
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // Safety check for ID existence
     if (project.id !== undefined) {
       onDelete(project.id);
     }
   };
 
   const handleNavigate = () => {
-    // Defensive check: only navigate if ID exists to prevent 404 routing errors
+    // FIX: Only navigate and set storage if ID exists
     if (project.id) {
+      localStorage.setItem("currentProjectId", String(project.id));
       navigate(`/kanban/${project.id}`);
     }
   };
@@ -54,7 +54,6 @@ export default function ProjectCard({
       onClick={handleNavigate}
       className="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 cursor-pointer hover:shadow-2xl hover:shadow-indigo-500/10 dark:hover:border-indigo-500/50 transition-all duration-300 flex flex-col h-full overflow-hidden"
     >
-      {/* Dynamic Glow Flare */}
       <div className="absolute -top-12 -right-12 w-32 h-32 bg-indigo-600/10 blur-[60px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
       <div className="flex justify-between items-start mb-4 relative z-10">
@@ -85,7 +84,6 @@ export default function ProjectCard({
       </p>
 
       <div className="flex items-center justify-between mt-auto mb-5 relative z-10">
-        {/* Priority Badge */}
         <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all ${p.bg} ${p.color} ${p.darkBg} ${p.darkText} dark:bg-opacity-20 border border-transparent dark:border-current/10 shadow-sm`}>
           {project.priority === "high" && <AlertCircle size={12} strokeWidth={2.5} />}
           {project.priority === "medium" && <Clock size={12} strokeWidth={2.5} />}

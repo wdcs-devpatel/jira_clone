@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   User,
   LogOut,
@@ -16,13 +16,25 @@ import { useTheme } from "../context/ThemeContext";
 
 export default function Navbar() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
   const [isOpen, setIsOpen] = useState(false);
+  
+  // --- NEW: State to track the active project ID for dynamic links ---
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(
+    localStorage.getItem("currentProjectId")
+  );
+
+  // Update activeProjectId whenever the URL changes (to catch storage updates)
+  useEffect(() => {
+    setActiveProjectId(localStorage.getItem("currentProjectId"));
+  }, [location]);
 
   const handleLogout = () => {
     logout();
+    localStorage.removeItem("currentProjectId"); // Cleanup on logout
     navigate("/");
   };
 
@@ -56,7 +68,12 @@ export default function Navbar() {
           <NavLink to="/tasks" className={getLinkClass}>
             Tasks
           </NavLink>
-          <NavLink to="/team" className={getLinkClass}>
+          
+          {/* --- MODIFIED: Dynamic Team Link --- */}
+          <NavLink 
+            to={activeProjectId ? `/team/${activeProjectId}` : "/dashboard"} 
+            className={getLinkClass}
+          >
             Team
           </NavLink>
         </div>

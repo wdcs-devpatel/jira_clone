@@ -7,24 +7,35 @@ const Project = sequelize.define("Project", {
     autoIncrement: true,
     primaryKey: true,
   },
+
   name: {
     type: DataTypes.STRING,
     allowNull: false,
   },
+
   description: {
     type: DataTypes.TEXT,
   },
+
   priority: {
     type: DataTypes.STRING,
     defaultValue: "medium",
   },
+
   teamLeader: {
     type: DataTypes.STRING,
   },
+
   userId: {
-    type: DataTypes.INTEGER, // FIXED: Changed from STRING to INTEGER
+    type: DataTypes.INTEGER,
     allowNull: false,
   },
+
+  members: {
+    type: DataTypes.JSON,
+    defaultValue: [],
+  },
+
 }, {
   timestamps: true,
 });

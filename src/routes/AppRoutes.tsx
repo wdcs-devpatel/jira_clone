@@ -26,7 +26,8 @@ function AppRoutes() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/kanban/:projectId" element={<KanbanBoard />} />
           <Route path="/tasks" element={<TaskList />} />
-          <Route path="/team" element={<TeamMembers />} />
+          {/* Change: Added :projectId parameter */}
+          <Route path="/team/:projectId" element={<TeamMembers />} />
           <Route path="/profile" element={<Profile />} />
         </Route>
 
