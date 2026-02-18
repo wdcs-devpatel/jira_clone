@@ -19,7 +19,6 @@ function parseJwt(token: string) {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [token, setToken] = useState<string | null>(() => {
     const savedToken = localStorage.getItem("token");
-    // Explicitly check for "undefined" string from previous failed logins
     return (savedToken && savedToken !== "undefined") ? savedToken : null;
   });
 

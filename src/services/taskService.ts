@@ -3,8 +3,7 @@ const BASE_URL = `${import.meta.env.VITE_API_BASE_URL}/tasks`;
 type Status = "todo" | "in-progress" | "done";
 
 /**
- * FIXED: Explicitly typed to HeadersInit to resolve TypeScript errors.
- * Returns undefined if no token is found so fetch can handle it safely.
+ * Helper for Auth Headers
  */
 function authHeader(): HeadersInit | undefined {
   const token = localStorage.getItem("token");
@@ -12,7 +11,7 @@ function authHeader(): HeadersInit | undefined {
 }
 
 /* =======================
-   GET TASKS BY PROJECT
+   GET TASKS BY PROJECT (MY TASKS ONLY)
 ======================= */
 export async function getAllTasks(projectId: number) {
   const res = await fetch(`${BASE_URL}/project/${projectId}`, {

@@ -20,14 +20,10 @@ interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>("dark");
-
-  useEffect(() => {
-    const storedTheme = localStorage.getItem("theme");
-    if (storedTheme === "light" || storedTheme === "dark") {
-      setTheme(storedTheme);
-    }
-  }, []);
+  const [theme, setTheme] = useState<Theme>(() => {
+    const stored = localStorage.getItem("theme");
+    return stored === "dark" ? "dark" : "light";
+  });
 
   useEffect(() => {
     const root = document.documentElement;
@@ -42,7 +38,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+    setTheme(prev => prev === "dark" ? "light" : "dark");
   };
 
   return (

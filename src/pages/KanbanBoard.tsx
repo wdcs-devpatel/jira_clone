@@ -348,6 +348,7 @@ export default function KanbanBoard() {
                 {editingTask ? "Update Task" : "Create Task"}
               </button>
             </div>
+            
           </div>
         </div>
       )}

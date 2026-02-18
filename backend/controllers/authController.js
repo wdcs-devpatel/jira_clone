@@ -7,7 +7,7 @@ const { CONFIG } = require("../config/db");
 /* REGISTER */
 exports.register = async (req, res, next) => {
   try {
-    const { username, email, password } = req.body;
+    const { username, email, password, firstName, lastName, phone } = req.body;
 
     const exists = await User.findOne({ where: { email } });
     if (exists)
@@ -18,13 +18,19 @@ exports.register = async (req, res, next) => {
     const user = await User.create({
       username,
       email,
-      password: hash
+      password: hash,
+      firstName,
+      lastName,
+      phone
     });
 
     res.status(201).json({
       id: user.id,
       username: user.username,
-      email: user.email
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone
     });
 
   } catch (err) {
@@ -64,6 +70,9 @@ exports.login = async (req, res, next) => {
       id: user.id,
       username: user.username,
       email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone,
       token
     });
 

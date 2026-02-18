@@ -1,10 +1,9 @@
 const User = require("../models/User");
 
-/* GET ALL USERS */
 exports.getUsers = async (req, res, next) => {
   try {
     const users = await User.findAll({
-      attributes: ["id", "username", "email"],
+      attributes: ["id", "username", "email", "firstName", "lastName", "phone"],
     });
     res.json(users);
   } catch (err) {
@@ -12,20 +11,25 @@ exports.getUsers = async (req, res, next) => {
   }
 };
 
-/* UPDATE LOGGED-IN USER PROFILE */
+exports.getProfile = async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.user.id, {
+      attributes: ["id", "username", "email", "firstName", "lastName", "phone"]
+    });
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json(user);
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.updateProfile = async (req, res, next) => {
   try {
-    const userId = req.user.id; // Extracted from JWT middleware
-
+    const userId = req.user.id;
     const { username, email, firstName, lastName, phone } = req.body;
-
     const user = await User.findByPk(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    // Update fields if they are provided in the request body
     await user.update({
       username: username ?? user.username,
       email: email ?? user.email,
@@ -34,10 +38,8 @@ exports.updateProfile = async (req, res, next) => {
       phone: phone ?? user.phone,
     });
 
-    // Remove password from response for security
     const responseData = user.toJSON();
     delete responseData.password;
-
     res.json(responseData);
   } catch (err) {
     next(err);

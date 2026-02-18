@@ -55,9 +55,13 @@ export default function Signup() {
 
     setIsLoading(true);
     try {
+      // FIXED: Sending the full form object instead of just 3 fields
       await registerUser({
+        firstName: form.firstName,
+        lastName: form.lastName,
         username: form.username,
         email: form.email,
+        phone: form.phone,
         password: form.password,
       });
 
@@ -136,7 +140,6 @@ export default function Signup() {
             </button>
           </form>
 
-          {/* LOGIN LINK */}
           <div className="mt-8 text-center pt-8 border-t border-slate-100 dark:border-white/5">
             <p className="text-slate-500 dark:text-slate-400 font-medium">
               Already have an account?{" "}
