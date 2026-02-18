@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, MessageSquare, Pencil, Trash2, X } from "lucide-react";
+import { ArrowLeft, MessageSquare, Pencil, Trash2, X, CheckCircle2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 import {
@@ -35,6 +35,9 @@ export default function KanbanBoard() {
   const [showModal, setShowModal] = useState(false);
   const [editingTask, setEditingTask] = useState<any>(null);
 
+  // --- NEW: State for "Done" Animation ---
+  const [doneNotification, setDoneNotification] = useState<string | null>(null);
+
   const [activeTab, setActiveTab] = useState<"general" | "comments">("general");
 
   const [title, setTitle] = useState("");
@@ -57,7 +60,6 @@ export default function KanbanBoard() {
   async function loadInitialData() {
     try {
       const fetchedUsers = await getUsers();
-      // STEP 4: Sort so current user is first
       const sorted = fetchedUsers.sort((a: any) => a.id === user?.id ? -1 : 1);
       setUsers(sorted);
       await loadTasks();
@@ -86,6 +88,13 @@ export default function KanbanBoard() {
     e.preventDefault();
     const taskId = e.dataTransfer.getData("taskId");
     if (taskId) {
+      // --- NEW: Trigger Animation Logic ---
+      if (newStatus === "done") {
+        const droppedTask = tasks.find(t => String(t.id) === taskId);
+        setDoneNotification(`Nice work! "${droppedTask?.title || 'Task'}" is completed.`);
+        setTimeout(() => setDoneNotification(null), 3000); // Hide after 3 seconds
+      }
+
       setTasks(prev => prev.map(t => String(t.id) === taskId ? { ...t, status: newStatus } : t));
       try {
         await updateTaskStatus(taskId, newStatus);
@@ -114,7 +123,6 @@ export default function KanbanBoard() {
       setDescription("");
       setPriority("medium");
       setTargetStatus(defaultStatus);
-      // STEP 4: Default assign to self
       setAssigneeId(String(user?.id || ""));
       setSubtasks([]);
       setComments([]);
@@ -183,7 +191,20 @@ export default function KanbanBoard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0b1220] p-6 md:p-10 transition-colors duration-300">
+    <div className="relative min-h-screen bg-slate-50 dark:bg-[#0b1220] p-6 md:p-10 transition-colors duration-300">
+      
+      {/* --- NEW: Floating Success Message Animation --- */}
+      {doneNotification && (
+        <div className="fixed top-10 left-1/2 -translate-x-1/2 z-[110] animate-in slide-in-from-top-10 fade-in duration-500 ease-out">
+          <div className="bg-emerald-500 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 border border-emerald-400">
+            <div className="bg-white/20 p-1 rounded-full">
+              <CheckCircle2 size={18} />
+            </div>
+            <span className="font-bold text-sm tracking-wide">{doneNotification}</span>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto">
         <Link to="/dashboard" className="text-slate-500 hover:text-indigo-500 flex items-center gap-2 mb-8 text-xs font-bold uppercase tracking-widest transition-colors">
           <ArrowLeft size={14} /> Back to Dashboard
