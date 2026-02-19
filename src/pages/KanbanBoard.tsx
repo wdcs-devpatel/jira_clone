@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import axios from "axios"; // Ensure axios is imported
 import { ArrowLeft, MessageSquare, Pencil, Trash2, X, CheckCircle2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -31,13 +32,11 @@ export default function KanbanBoard() {
   const numericProjectId = projectId ? Number(projectId) : null;
   
   const [tasks, setTasks] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]); 
   const [showModal, setShowModal] = useState(false);
   const [editingTask, setEditingTask] = useState<any>(null);
 
-  // --- NEW: State for "Done" Animation ---
   const [doneNotification, setDoneNotification] = useState<string | null>(null);
-
   const [activeTab, setActiveTab] = useState<"general" | "comments">("general");
 
   const [title, setTitle] = useState("");
@@ -53,16 +52,36 @@ export default function KanbanBoard() {
 
   useEffect(() => {
     if (numericProjectId !== null && !isNaN(numericProjectId)) {
-      // FIX: Sync currentProjectId to localStorage for Navbar dynamic routing
       localStorage.setItem("currentProjectId", String(numericProjectId));
       loadInitialData();
     }
   }, [numericProjectId]);
 
   async function loadInitialData() {
+    if (numericProjectId === null || isNaN(numericProjectId)) return;
+    const token = localStorage.getItem("token");
+
     try {
-      const fetchedUsers = await getUsers();
-      const sorted = fetchedUsers.sort((a: any) => a.id === user?.id ? -1 : 1);
+      // 1. Fetch all users and project member IDs simultaneously
+      const [allUsersRes, memberIdsRes] = await Promise.all([
+        getUsers(), // Fetches all users from userService
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/projects/${numericProjectId}/members`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      ]);
+
+      const allUsers = allUsersRes;
+      const memberIds: number[] = memberIdsRes.data;
+
+      // 2. Filter users to only include those whose IDs are in the members list
+      // Note: We include the logged-in user as well just in case they aren't in the explicit member list
+      const projectMembers = allUsers.filter((u: any) => 
+        memberIds.includes(u.id) || u.id === user?.id
+      );
+
+      // 3. Sort so current user is first in dropdown
+      const sorted = projectMembers.sort((a: any) => a.id === user?.id ? -1 : 1);
+      
       setUsers(sorted);
       await loadTasks();
     } catch (err) {
@@ -90,11 +109,10 @@ export default function KanbanBoard() {
     e.preventDefault();
     const taskId = e.dataTransfer.getData("taskId");
     if (taskId) {
-      // --- NEW: Trigger Animation Logic ---
       if (newStatus === "done") {
         const droppedTask = tasks.find(t => String(t.id) === taskId);
         setDoneNotification(`Nice work! "${droppedTask?.title || 'Task'}" is completed.`);
-        setTimeout(() => setDoneNotification(null), 3000); // Hide after 3 seconds
+        setTimeout(() => setDoneNotification(null), 3000);
       }
 
       setTasks(prev => prev.map(t => String(t.id) === taskId ? { ...t, status: newStatus } : t));
@@ -195,7 +213,6 @@ export default function KanbanBoard() {
   return (
     <div className="relative min-h-screen bg-slate-50 dark:bg-[#0b1220] p-6 md:p-10 transition-colors duration-300">
       
-      {/* --- NEW: Floating Success Message Animation --- */}
       {doneNotification && (
         <div className="fixed top-10 left-1/2 -translate-x-1/2 z-[110] animate-in slide-in-from-top-10 fade-in duration-500 ease-out">
           <div className="bg-emerald-500 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 border border-emerald-400">
@@ -219,7 +236,7 @@ export default function KanbanBoard() {
                 title={col.title}
                 status={col.key}
                 tasks={tasks.filter((t) => t.status === col.key)}
-                users={users}
+                users={users} // Users list is now filtered to members only
                 onEdit={openModal}
                 onDelete={handleDelete}
                 onAddClick={() => openModal(null, col.key)}

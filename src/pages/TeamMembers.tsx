@@ -32,6 +32,7 @@ export default function TeamMembers() {
 
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [team, setTeam] = useState<User[]>([]);
+  const [ownerId, setOwnerId] = useState<number | null>(null); // State for project owner
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,16 +45,21 @@ export default function TeamMembers() {
   async function load() {
     try {
       setLoading(true);
-      const [usersRes, membersRes] = await Promise.all([
+      // Step 4: Fetch project data along with users to identify the real owner
+      const [usersRes, membersRes, projectRes] = await Promise.all([
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/users`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/projects/${numericId}/members`, {
           headers: { Authorization: `Bearer ${token}` }
+        }),
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/projects/${numericId}`, {
+          headers: { Authorization: `Bearer ${token}` }
         })
       ]);
 
       setAllUsers(usersRes.data);
+      setOwnerId(projectRes.data.userId); // Store real owner ID
       const memberIds: number[] = membersRes.data;
       setTeam(usersRes.data.filter((u: User) => memberIds.includes(u.id)));
     } catch (err) {
@@ -149,8 +155,8 @@ export default function TeamMembers() {
                 <MemberCard 
                   key={u.id} 
                   user={u} 
-                  // Step 3: Pass Leader flag to card
-                  isLeader={u.id === Number(localStorage.getItem("userId"))} 
+                  // Step 3: Compare user ID with real project owner ID
+                  isLeader={u.id === ownerId} 
                   onDetails={() => setSelectedUser(u)} 
                   onRemove={(e) => removeMember(e, u.id)} 
                 />
@@ -191,7 +197,7 @@ export default function TeamMembers() {
   );
 }
 
-// Step 4 & 6: Update MemberCard props and component typing
+// Step 4 & 6: Updated signature with typing
 function MemberCard({ 
   user, 
   onDetails, 
@@ -217,7 +223,13 @@ function MemberCard({
           <h3 className="font-black text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors uppercase tracking-tight line-clamp-1">{user.name || `User #${user.id}`}</h3>
           <p className="text-xs text-slate-500 font-medium">@{user.name?.toLowerCase().replace(/\s/g, '') || 'user'}</p>
         </div>
-        <button onClick={onRemove} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all"><UserMinus size={16} /></button>
+        
+        {/* Only show remove button if user is NOT the leader */}
+        {!isLeader && (
+          <button onClick={onRemove} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all">
+            <UserMinus size={16} />
+          </button>
+        )}
       </div>
       <div className="mt-6 pt-6 border-t border-slate-50 dark:border-slate-800 flex justify-between items-center relative z-10">
         {/* Step 5: Dynamic Badge UI */}
