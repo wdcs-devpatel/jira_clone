@@ -1,6 +1,42 @@
-
 const { Task, Project } = require("../models");
+const { Op } = require("sequelize");
 
+/* =======================
+   SEARCH TASKS
+======================= */
+exports.searchTasks = async (req, res, next) => {
+  try {
+    const q = req.query.q || "";
+
+    // Security check: Only return tasks the user has access to
+    // (They own the project OR they are the assignee)
+    const tasks = await Task.findAll({
+      where: {
+        title: {
+          [Op.iLike]: `%${q}%` // Case-insensitive search for Postgres
+        },
+        [Op.or]: [
+          { assigneeId: req.user.id },
+          { '$Project.userId$': req.user.id }
+        ]
+      },
+      include: [{
+        model: Project,
+        attributes: ['userId', 'name']
+      }],
+      order: [["createdAt", "DESC"]],
+    });
+
+    res.json(tasks);
+  } catch (err) {
+    console.error("Search Error:", err);
+    next(err);
+  }
+};
+
+/* =======================
+   CREATE TASK
+======================= */
 exports.createTask = async (req, res, next) => {
   try {
     const { projectId } = req.params;
@@ -10,6 +46,7 @@ exports.createTask = async (req, res, next) => {
       return res.status(404).json({ message: "Project not found" });
     }
 
+    // Permission check
     if (project.userId !== req.user.id) {
       const assigned = await Task.findOne({
         where: {
@@ -33,6 +70,9 @@ exports.createTask = async (req, res, next) => {
   }
 };
 
+/* =======================
+   GET TASKS FOR PROJECT
+======================= */
 exports.getTasksForProject = async (req, res, next) => {
   try {
     const { projectId } = req.params;
@@ -42,7 +82,6 @@ exports.getTasksForProject = async (req, res, next) => {
       return res.status(404).json({ message: "Project not found" });
     }
 
-    // Permission check: Must be owner or have at least one assigned task
     if (project.userId !== req.user.id) {
       const assigned = await Task.findOne({
         where: {
@@ -66,12 +105,14 @@ exports.getTasksForProject = async (req, res, next) => {
   }
 };
 
+/* =======================
+   UPDATE TASK
+======================= */
 exports.updateTask = async (req, res, next) => {
   try {
     const task = await Task.findByPk(req.params.id);
     if (!task) return res.status(404).json({ message: "Task not found" });
     
-    // Optional: Add logic here to ensure only the owner or the assignee can update the task
     await task.update(req.body);
     res.json(task);
   } catch (err) {
@@ -79,6 +120,9 @@ exports.updateTask = async (req, res, next) => {
   }
 };
 
+/* =======================
+   UPDATE STATUS ONLY
+======================= */
 exports.updateTaskStatus = async (req, res, next) => {
   try {
     const task = await Task.findByPk(req.params.id);
@@ -92,6 +136,9 @@ exports.updateTaskStatus = async (req, res, next) => {
   }
 };
 
+/* =======================
+   DELETE TASK
+======================= */
 exports.deleteTask = async (req, res, next) => {
   try {
     const task = await Task.findByPk(req.params.id);

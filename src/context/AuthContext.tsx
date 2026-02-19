@@ -1,58 +1,85 @@
-import { createContext, useContext, useState, ReactNode } from "react";
-import { User, AuthContextType } from "../interfaces";
+import { createContext, useContext, useState, ReactNode, useEffect } from "react";
+  import { User, AuthContextType } from "../interfaces";
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
+  const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+  export function AuthProvider({ children }: { children: ReactNode }) {
 
-export function AuthProvider({ children }: AuthProviderProps) {
+    const [token, setToken] = useState<string | null>(
+      localStorage.getItem("accessToken")
+    );
 
-  const [token, setToken] = useState<string | null>(() => {
-    const t = localStorage.getItem("token");
-    return t && t !== "undefined" ? t : null;
-  });
-
-  const [user, setUser] = useState<User | null>(() => {
-    try {
+    const [user, setUser] = useState<User | null>(() => {
       const u = localStorage.getItem("currentUser");
-      return u ? JSON.parse(u) : null;
-    } catch {
-      return null;
-    }
-  });
+      try {
+        return u ? JSON.parse(u) : null;
+      } catch (e) {
+        return null;
+      }
+    });
 
-  const login = (newToken: string, userData: User) => {
-    localStorage.setItem("token", newToken);
-    localStorage.setItem("currentUser", JSON.stringify(userData));
-    setToken(newToken);
-    setUser(userData);
-  };
+    /* Sync state if tokens change (important for interceptor refresh) */
+    useEffect(() => {
+      const syncAuth = () => {
+        setToken(localStorage.getItem("accessToken"));
+        const u = localStorage.getItem("currentUser");
+        try {
+          setUser(u ? JSON.parse(u) : null);
+        } catch (e) {
+          setUser(null);
+        }
+      };
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("currentUser");
-    setToken(null);
-    setUser(null);
-  };
+      window.addEventListener("storage", syncAuth);
+      return () => window.removeEventListener("storage", syncAuth);
+    }, []);
 
-  const updateUser = (updated: Partial<User>) => {
-    if (!user) return;
-    const newUser = { ...user, ...updated };
-    localStorage.setItem("currentUser", JSON.stringify(newUser));
-    setUser(newUser);
-  };
+    /* LOGIN - FIXED VERSION */
+    const login = (
+      tokens: { accessToken: string; refreshToken: string },
+      userData: User
+    ) => {
+      localStorage.setItem("accessToken", tokens.accessToken);
+      localStorage.setItem("refreshToken", tokens.refreshToken);
 
-  return (
-    <AuthContext.Provider value={{ token, user, login, logout, updateUser }}>
-      {children}
-    </AuthContext.Provider>
-  );
-}
+      /* IMPORTANT FIX: Construct a safe user object to ensure consistency in storage */
+      const safeUser = {
+        id: userData.id,
+        username: userData.username,
+        email: userData.email
+      };
 
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
-  return ctx;
-}
+      localStorage.setItem("currentUser", JSON.stringify(safeUser));
+      setToken(tokens.accessToken);
+      setUser(safeUser);
+    };
+
+    /* LOGOUT */
+    const logout = () => {
+      localStorage.clear();
+      setToken(null);
+      setUser(null);
+      window.location.href = "/";
+    };
+
+    /* UPDATE USER */
+    const updateUser = (updated: Partial<User>) => {
+      if (!user) return;
+
+      const newUser = { ...user, ...updated };
+      localStorage.setItem("currentUser", JSON.stringify(newUser));
+      setUser(newUser);
+    };
+
+    return (
+      <AuthContext.Provider value={{ token, user, login, logout, updateUser }}>
+        {children}
+      </AuthContext.Provider>
+    );
+  }
+
+  export function useAuth() {
+    const ctx = useContext(AuthContext);
+    if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+    return ctx;
+  }

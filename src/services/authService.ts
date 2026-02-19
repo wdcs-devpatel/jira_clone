@@ -6,54 +6,73 @@ export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
 });
 
-/* attach token automatically */
+/* Attach access token automatically */
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("accessToken");
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
-/* auto logout if token invalid */
+/* AUTO REFRESH TOKEN */
 api.interceptors.response.use(
-  res => res,
-  err => {
-    if (err.response?.status === 401) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("currentUser");
-      window.location.href = "/login";
+  (res) => res,
+  async (err) => {
+    const originalRequest = err.config;
+
+    if (err.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        const refreshToken = localStorage.getItem("refreshToken");
+        if (!refreshToken) throw new Error("No refresh token");
+
+        const refreshRes = await axios.post(`${API_URL}/refresh`, {
+          refreshToken
+        });
+
+        const { accessToken, refreshToken: newRefresh } = refreshRes.data;
+
+        localStorage.setItem("accessToken", accessToken);
+        localStorage.setItem("refreshToken", newRefresh);
+
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+
+        return api.request(originalRequest);
+
+      } catch (refreshError) {
+        localStorage.clear();
+        window.location.href = "/";
+        return Promise.reject(refreshError);
+      }
     }
+
     return Promise.reject(err);
   }
 );
 
-/* register */
-export const registerUser = async (userData: any) => {
-  const res = await axios.post(`${API_URL}/register`, userData);
-  return res.data;
-};
-
-/* login */
+/* LOGIN */
 export const loginUser = async (identifier: string, password: string) => {
   const res = await axios.post(`${API_URL}/login`, {
     identifier,
-    password,
+    password
   });
   return res.data;
 };
 
-/* logout */
+/* REGISTER */
+export const registerUser = async (userData: {
+  firstName: string;
+  lastName: string;
+  username: string;
+  email: string;
+  phone: string;
+  password: string;
+}) => {
+  const res = await axios.post(`${API_URL}/register`, userData);
+  return res.data;
+};
+
+/* LOGOUT */
 export const logoutUser = () => {
-  localStorage.removeItem("token");
-  localStorage.removeItem("currentUser");
-};
-
-/* auth check */
-export const isAuthenticated = () => {
-  return !!localStorage.getItem("token");
-};
-
-/* current user */
-export const getCurrentUser = () => {
-  const user = localStorage.getItem("currentUser");
-  return user ? JSON.parse(user) : null;
+  localStorage.clear();
 };

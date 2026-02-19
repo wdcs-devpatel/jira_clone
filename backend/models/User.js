@@ -25,20 +25,14 @@ const User = sequelize.define("User", {
     allowNull: false,
   },
 
-  firstName: {
-    type: DataTypes.STRING,
-  },
+  firstName: DataTypes.STRING,
+  lastName: DataTypes.STRING,
+  phone: DataTypes.STRING,
 
-  lastName: {
-    type: DataTypes.STRING,
-  },
-
-  phone: {
-    type: DataTypes.STRING,
+  refreshToken: {
+    type: DataTypes.TEXT,
   }
 
-}, {
-  timestamps: true,
-});
+}, { timestamps: true });
 
 module.exports = User;

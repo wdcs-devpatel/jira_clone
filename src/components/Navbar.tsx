@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 
 import jiraLogo from "../assets/jira-logo.png";
-
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 
@@ -22,19 +21,20 @@ export default function Navbar() {
 
   const [isOpen, setIsOpen] = useState(false);
   
-  // --- NEW: State to track the active project ID for dynamic links ---
+  // State to track the active project ID for the dynamic Team link
   const [activeProjectId, setActiveProjectId] = useState<string | null>(
     localStorage.getItem("currentProjectId")
   );
 
-  // Update activeProjectId whenever the URL changes (to catch storage updates)
+  // Sync state whenever the URL changes or a project is selected
   useEffect(() => {
-    setActiveProjectId(localStorage.getItem("currentProjectId"));
+    const storedId = localStorage.getItem("currentProjectId");
+    setActiveProjectId(storedId);
   }, [location]);
 
   const handleLogout = () => {
     logout();
-    localStorage.removeItem("currentProjectId"); // Cleanup on logout
+    localStorage.clear(); // Ensure all keys including currentProjectId are wiped
     navigate("/");
   };
 
@@ -69,9 +69,10 @@ export default function Navbar() {
             Tasks
           </NavLink>
           
-          {/* --- MODIFIED: Dynamic Team Link --- */}
+          {/* --- QUICK FIX APPLIED HERE --- */}
+          {/* Defaults to project ID 1 if activeProjectId is not yet set in storage */}
           <NavLink 
-            to={activeProjectId ? `/team/${activeProjectId}` : "/dashboard"} 
+            to={`/team/${activeProjectId || 1}`} 
             className={getLinkClass}
           >
             Team
@@ -103,7 +104,7 @@ export default function Navbar() {
             </button>
 
             {isOpen && (
-              <div className="absolute right-0 mt-4 w-56 bg-white dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200 dark:border-white/5 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              <div className="absolute right-0 mt-4 w-56 bg-white dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200 dark:border-white/5 overflow-hidden">
                 <div className="px-4 py-3 border-b border-slate-100 dark:border-white/5 mb-1">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Account</p>
                 </div>

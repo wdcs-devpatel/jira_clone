@@ -53,7 +53,13 @@ export default function Dashboard() {
       const projectList = await getProjects();
       setProjects(projectList);
 
-      // FIXED: Added '!' to p.id to resolve the optional ID type error
+      // --- FIX: Automatically set the first project as the active one if none exists ---
+      if (!localStorage.getItem("currentProjectId") && projectList.length > 0) {
+        localStorage.setItem("currentProjectId", String(projectList[0].id));
+        // Dispatch event so the Navbar updates the 'Team' link immediately
+        window.dispatchEvent(new Event("storage"));
+      }
+
       const results = await Promise.allSettled(
         projectList.map(p => getAllTasks(p.id!))
       );
@@ -99,6 +105,11 @@ export default function Dashboard() {
     if (window.confirm("Delete this project? This will also remove associated tasks.")) {
       try {
         await deleteProject(id);
+        // If we deleted the active project, clear the selection
+        if (localStorage.getItem("currentProjectId") === String(id)) {
+          localStorage.removeItem("currentProjectId");
+          window.dispatchEvent(new Event("storage"));
+        }
         toast.success("Project removed");
         await loadDashboard();
       } catch (err: any) {
@@ -288,7 +299,7 @@ export default function Dashboard() {
                 {processedProjects.map((p) => (
                   <ProjectCard 
                     key={p.id} 
-                    project={p as any} // Cast as any if TaskDetails and ProjectCard types differ slightly
+                    project={p as any} 
                     onEdit={(proj) => setEditingProject(proj as any)} 
                     onDelete={handleDeleteProject} 
                   />

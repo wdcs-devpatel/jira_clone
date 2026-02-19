@@ -1,8 +1,14 @@
 import axios from "axios";
+
 const API = import.meta.env.VITE_API_BASE_URL;
 
+function authHeader() {
+  const token = localStorage.getItem("accessToken");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export interface User {
-  id: number | string;
+  id: number; // Strictly number
   username?: string;
   email?: string;
   firstName?: string;
@@ -12,14 +18,13 @@ export interface User {
 }
 
 export async function getUsers(): Promise<User[]> {
-  const token = localStorage.getItem("token");
   try {
-    const res = await axios.get(`${API}/users`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await axios.get(`${API}/users`, { headers: authHeader() });
+
     return res.data.map((u: any) => ({
       ...u,
-      name: u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : u.username,
+      id: Number(u.id), // Force numeric ID
+      name: u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : u.username
     }));
   } catch (error) {
     console.error("Error fetching users:", error);
@@ -28,9 +33,6 @@ export async function getUsers(): Promise<User[]> {
 }
 
 export async function updateProfile(userId: any, profileData: any) {
-  const token = localStorage.getItem("token");
-  const res = await axios.put(`${API}/users/profile`, profileData, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+  const res = await axios.put(`${API}/users/profile`, profileData, { headers: authHeader() });
   return res.data;
 }

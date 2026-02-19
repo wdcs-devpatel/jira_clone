@@ -26,14 +26,13 @@ function AppRoutes() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/kanban/:projectId" element={<KanbanBoard />} />
           <Route path="/tasks" element={<TaskList />} />
-          {/* Change: Added :projectId parameter */}
           <Route path="/team/:projectId" element={<TeamMembers />} />
           <Route path="/profile" element={<Profile />} />
         </Route>
 
         <Route
           path="*"
-          element={<div className="p-10 text-center text-white">404 - Page Not Found</div>}
+          element={<div className="p-10 text-center text-gray-500">404 - Page Not Found</div>}
         />
       </Routes>
     </>

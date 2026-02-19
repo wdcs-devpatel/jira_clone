@@ -1,87 +1,43 @@
-const BASE_URL = `${import.meta.env.VITE_API_BASE_URL}/tasks`;
+import { api } from "./authService";
+
+const BASE_URL = "/tasks";
 
 type Status = "todo" | "in-progress" | "done";
 
-/**
- * Helper for Auth Headers
- */
-function authHeader(): HeadersInit | undefined {
-  const token = localStorage.getItem("token");
-  return token ? { Authorization: `Bearer ${token}` } : undefined;
+/* SEARCH TASKS */
+export async function searchTasks(query: string) {
+  const res = await api.get(`${BASE_URL}/search`, {
+    params: { q: query }
+  });
+  return res.data;
 }
 
-/* =======================
-   GET TASKS BY PROJECT (MY TASKS ONLY)
-======================= */
+/* GET TASKS */
 export async function getAllTasks(projectId: number) {
-  const res = await fetch(`${BASE_URL}/project/${projectId}`, {
-    headers: authHeader() || {}
-  });
-
-  if (!res.ok) throw new Error("Failed to fetch tasks");
-  return res.json();
+  const res = await api.get(`${BASE_URL}/project/${projectId}`);
+  return res.data;
 }
 
-/* =======================
-   CREATE TASK IN PROJECT
-======================= */
+/* CREATE TASK */
 export async function addTask(task: any, projectId: number) {
-  const res = await fetch(`${BASE_URL}/project/${projectId}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(authHeader() || {})
-    },
-    body: JSON.stringify(task),
-  });
-
-  if (!res.ok) throw new Error("Failed to create task");
-  return res.json();
+  const res = await api.post(`${BASE_URL}/project/${projectId}`, task);
+  return res.data;
 }
 
-/* =======================
-   UPDATE FULL TASK
-======================= */
+/* UPDATE TASK */
 export async function updateTask(taskId: string | number, updates: any) {
-  const res = await fetch(`${BASE_URL}/${taskId}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      ...(authHeader() || {})
-    },
-    body: JSON.stringify(updates),
-  });
-
-  if (!res.ok) throw new Error("Failed to update task");
-  return res.json();
+  const res = await api.put(`${BASE_URL}/${taskId}`, updates);
+  return res.data;
 }
 
-/* =======================
-   UPDATE STATUS ONLY
-======================= */
+/* UPDATE STATUS */
 export async function updateTaskStatus(taskId: string | number, status: Status) {
-  const res = await fetch(`${BASE_URL}/${taskId}/status`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      ...(authHeader() || {})
-    },
-    body: JSON.stringify({ status }),
-  });
-
-  if (!res.ok) throw new Error("Failed to update status");
-  return res.json();
+  const res = await api.patch(`${BASE_URL}/${taskId}/status`, { status });
+  return res.data;
 }
 
-/* =======================
-   DELETE TASK
-======================= */
+/* DELETE TASK */
 export async function deleteTask(taskId: string | number) {
-  const res = await fetch(`${BASE_URL}/${taskId}`, {
-    method: "DELETE",
-    headers: authHeader() || {}
-  });
-
-  if (!res.ok) throw new Error("Failed to delete task");
-  return res.json();
+  const res = await api.delete(`${BASE_URL}/${taskId}`);
+  return res.data;
 }
