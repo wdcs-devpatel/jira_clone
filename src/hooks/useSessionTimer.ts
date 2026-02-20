@@ -10,7 +10,7 @@ export default function useSessionTimer(onExpireSoon: () => void) {
   clearTimer();
   timerRef.current = window.setTimeout(() => {
     onExpireSoon();
-  }, 15 * 1000); // 15 seconds
+  }, 15* 60 * 1000); 
 }
 
 

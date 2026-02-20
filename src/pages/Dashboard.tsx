@@ -39,10 +39,10 @@ export default function Dashboard() {
   const [showCreateProject, setShowCreateProject] = useState<boolean>(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
 
-  // Role check based on your profile dropdown strings
-  const canManageProjects = 
-    user?.position === "Project Manager" || 
-    user?.position === "Team Leader";
+  const canManageProjects = useMemo(() => {
+    const role = user?.position?.trim().toLowerCase();
+    return role === "project manager";
+  }, [user]);
 
   const priorityWeight: Record<TaskPriority, number> = { 
     high: 3, 
@@ -176,6 +176,7 @@ export default function Dashboard() {
               />
             </div>
 
+            {/* Role-Based Action: "New Project" Button */}
             {canManageProjects && (
               <button 
                 onClick={() => setShowCreateProject(true)} 
@@ -209,7 +210,7 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* --- RESTORED: Progress & Breakdown Section --- */}
+        {/* Global Progress & Breakdown Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-center space-y-6">
             <div className="flex items-center justify-between">
@@ -263,7 +264,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* --- Active Projects List --- */}
+        {/* Project Section */}
         {loading ? (
           <div className="flex flex-col items-center py-24">
             <Loader2 className="animate-spin text-indigo-500 mb-4" size={48} />

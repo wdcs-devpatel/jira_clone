@@ -2,7 +2,17 @@ import { useState, ChangeEvent, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { registerUser } from "../services/authService";
-import { User, Phone, Mail, Lock, UserPlus, AlertCircle, ArrowLeft } from "lucide-react";
+import { 
+  User, 
+  Phone, 
+  Mail, 
+  Lock, 
+  UserPlus, 
+  AlertCircle, 
+  ArrowLeft, 
+  Briefcase, 
+  ChevronDown 
+} from "lucide-react";
 
 interface SignupForm {
   firstName: string;
@@ -10,6 +20,7 @@ interface SignupForm {
   username: string;
   email: string;
   phone: string;
+  position: string; // Added position field
   password: string;
   confirmPassword: string;
 }
@@ -22,6 +33,7 @@ export default function Signup() {
     username: "",
     email: "",
     phone: "",
+    position: "", // Initialized as empty
     password: "",
     confirmPassword: "",
   });
@@ -29,7 +41,8 @@ export default function Signup() {
   const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
 
-  function handleChange(e: ChangeEvent<HTMLInputElement>) {
+  // Unified change handler for inputs and selects
+  function handleChange(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
 
@@ -38,6 +51,7 @@ export default function Signup() {
     if (form.firstName.length < 2 || form.lastName.length < 2) return "Names must be at least 2 characters long.";
     if (!emailRegex.test(form.email)) return "Please enter a valid email address.";
     if (form.username.length < 3) return "Username must be at least 3 characters long.";
+    if (!form.position) return "Please select your professional role.";
     if (form.password.length < 6) return "Password must be at least 6 characters long.";
     if (form.password !== form.confirmPassword) return "Passwords do not match.";
     return null;
@@ -55,13 +69,14 @@ export default function Signup() {
 
     setIsLoading(true);
     try {
-      // FIXED: Sending the full form object instead of just 3 fields
+      // Sending full form data to the backend auth controller
       await registerUser({
         firstName: form.firstName,
         lastName: form.lastName,
         username: form.username,
         email: form.email,
         phone: form.phone,
+        position: form.position, 
         password: form.password,
       });
 
@@ -77,6 +92,8 @@ export default function Signup() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-gradient-to-br dark:from-[#1e3a8a] dark:via-[#1e293b] dark:to-[#1e3a8a] p-4 transition-colors duration-300">
       <div className="w-full max-w-2xl bg-white dark:bg-slate-800/40 backdrop-blur-xl border border-slate-200 dark:border-slate-700/50 rounded-[2.5rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-500">
+        
+        {/* Header Section */}
         <div className="p-8 pb-0 text-center relative">
           <button onClick={() => navigate("/")} className="absolute left-8 top-8 p-2 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400 transition-all">
             <ArrowLeft size={18} />
@@ -90,6 +107,8 @@ export default function Signup() {
 
         <div className="p-10">
           <form onSubmit={handleSignup} className="space-y-6">
+            
+            {/* Name Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={18} />
@@ -101,6 +120,7 @@ export default function Signup() {
               </div>
             </div>
 
+            {/* Email & Phone Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={18} />
@@ -112,11 +132,36 @@ export default function Signup() {
               </div>
             </div>
 
+            {/* Role Dropdown - Added to ensure dashboard permissions work immediately */}
+            <div className="relative">
+              <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={18} />
+              <select 
+                name="position" 
+                value={form.position} 
+                onChange={handleChange}
+                required
+                className="w-full pl-12 pr-10 py-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer"
+              >
+                <option value="" disabled>Select Your Professional Role</option>
+                <option value="Project Manager">Project Manager</option>
+                <option value="Team Leader">Team Leader</option>
+                <option value="Senior Developer">Senior Developer</option>
+                <option value="Developer">Developer</option>
+                <option value="UI/UX Designer">UI/UX Designer</option>
+                <option value="QA Tester">QA Tester</option>
+                <option value="DevOps Engineer">DevOps Engineer</option>
+                <option value="Intern">Intern</option>
+              </select>
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+            </div>
+
+            {/* Username */}
             <div className="relative">
               <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={18} />
               <input name="username" placeholder="Username" className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all" value={form.username} onChange={handleChange} required />
             </div>
 
+            {/* Passwords Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={18} />
@@ -140,6 +185,7 @@ export default function Signup() {
             </button>
           </form>
 
+          {/* Footer Link */}
           <div className="mt-8 text-center pt-8 border-t border-slate-100 dark:border-white/5">
             <p className="text-slate-500 dark:text-slate-400 font-medium">
               Already have an account?{" "}

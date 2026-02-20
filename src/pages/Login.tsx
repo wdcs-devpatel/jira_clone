@@ -23,27 +23,21 @@ export default function Login() {
       const data = await loginUser(identifier, password);
 
       // Verify required fields match the new backend rotation response
-      if (!data.accessToken || !data.refreshToken) {
+      if (!data.accessToken || !data.refreshToken || !data.user) {
         throw new Error("Invalid login response from server");
       }
 
-      // Construct user object from top-level response fields
-      const userObj = {
-        id: data.id,
-        username: data.username,
-        email: data.email
-      };
-
-      // Pass the tokens object and the user object to AuthContext
+      // FIX: Pass the entire user object (including position) to AuthContext
+      // Your backend authController explicitly sends this nested 'user' object
       login(
         {
           accessToken: data.accessToken,
           refreshToken: data.refreshToken
         },
-        userObj
+        data.user // This now includes id, username, email, position, firstName, etc.
       );
 
-      toast.success(`Welcome back, ${userObj.username}!`);
+      toast.success(`Welcome back, ${data.user.username}!`);
       navigate("/dashboard");
 
     } catch (err: any) {
@@ -131,4 +125,4 @@ export default function Login() {
       </div>
     </div>
   );
-}
+} 

@@ -17,6 +17,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   });
 
+  // Keep state in sync across tabs or after profile updates
   useEffect(() => {
     const syncAuth = () => {
       setToken(localStorage.getItem("accessToken"));
@@ -39,12 +40,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("accessToken", tokens.accessToken);
     localStorage.setItem("refreshToken", tokens.refreshToken);
 
-    // Expanded safeUser to include all necessary fields
+    // Explicitly map all fields including position to ensure dashboard permissions work
     const safeUser: User = {
       id: userData.id,
       username: userData.username,
       email: userData.email,
-      position: userData.position,
+      position: userData.position, // Critical for role-based button visibility
       firstName: userData.firstName,
       lastName: userData.lastName,
       phone: userData.phone
@@ -53,6 +54,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("currentUser", JSON.stringify(safeUser));
     setToken(tokens.accessToken);
     setUser(safeUser);
+
+    // FIX: Manually trigger storage event so Dashboard re-calculates permissions immediately
+    window.dispatchEvent(new Event("storage"));
   };
 
   const logout = () => {
@@ -64,9 +68,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateUser = (updated: Partial<User>) => {
     if (!user) return;
+    
+    // Merge updates and save to local storage
     const newUser = { ...user, ...updated };
     localStorage.setItem("currentUser", JSON.stringify(newUser));
     setUser(newUser);
+
+    // Notify other parts of the app (like Dashboard) that storage has changed
+    window.dispatchEvent(new Event("storage"));
   };
 
   return (

@@ -1,8 +1,9 @@
 import { useState, useEffect, FormEvent } from "react";
 import { PRIORITY_LIST } from "../utils/constants";
-import { UserCheck } from "lucide-react";
+import { UserCheck, ChevronDown } from "lucide-react";
 import { Project } from "../services/projectService";
-import { TaskPriority } from "../interfaces";
+import { getUsers } from "../services/userService"; // Added for fetching users
+import { User as UserInterface, TaskPriority } from "../interfaces"; // Renamed import to avoid conflict
 import { useAuth } from "../context/AuthContext";
 
 interface CreateProjectModalProps {
@@ -20,7 +21,23 @@ export default function CreateProjectModal({
   const [name, setName] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
-  const [teamLeader, setTeamLeader] = useState<string>(user?.username || "");
+  const [teamLeader, setTeamLeader] = useState<string>(""); // Default to empty for selection
+  const [managers, setManagers] = useState<UserInterface[]>([]); // State for filtered managers
+
+  // Fetch managers for the dropdown
+  useEffect(() => {
+    async function loadManagers() {
+      try {
+        const allUsers = await getUsers();
+        // Only include users defined as Project Manager in their profile
+        const filtered = allUsers.filter((u) => u.position === "Project Manager");
+        setManagers(filtered);
+      } catch (err) {
+        console.error("Failed to load managers", err);
+      }
+    }
+    loadManagers();
+  }, []);
 
   useEffect(() => {
     if (editingProject) {
@@ -32,7 +49,8 @@ export default function CreateProjectModal({
       setName("");
       setDescription("");
       setPriority("medium");
-      setTeamLeader(user?.username || "");
+      // Default to the current user if they are a Project Manager
+      setTeamLeader(user?.position === "Project Manager" ? user.username : "");
     }
   }, [editingProject, user]);
 
@@ -45,7 +63,7 @@ export default function CreateProjectModal({
       description, 
       priority,
       teamLeader,
-      userId: user?.id // STEP 5: Sending creator ID
+      userId: user?.id 
     });
   }
 
@@ -56,6 +74,7 @@ export default function CreateProjectModal({
           {editingProject ? "Edit Project" : "Create New Project"}
         </h2>
         <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Project Name */}
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2 tracking-widest">
               Project Name
@@ -68,20 +87,32 @@ export default function CreateProjectModal({
               className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 outline-none text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 transition-all"
             />
           </div>
+
+          {/* Team Leader / Project Manager Selection */}
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2 tracking-widest">
-              Team Leader / Assigned To
+              Assign Project Manager
             </label>
             <div className="relative">
-              <UserCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input
+              <UserCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10" size={18} />
+              <select
+                required
                 value={teamLeader}
                 onChange={(e) => setTeamLeader(e.target.value)}
-                placeholder="Enter leader name"
-                className="w-full pl-12 pr-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 outline-none text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 transition-all"
-              />
+                className="w-full pl-12 pr-10 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 outline-none text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer"
+              >
+                <option value="" disabled>Select a Project Manager</option>
+                {managers.map((m) => (
+                  <option key={m.id} value={m.username}>
+                    {m.firstName} {m.lastName} (@{m.username})
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
             </div>
           </div>
+
+          {/* Description */}
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2 tracking-widest">
               Description
@@ -92,6 +123,8 @@ export default function CreateProjectModal({
               className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 min-h-[80px] text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
             />
           </div>
+
+          {/* Project Priority */}
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2 tracking-widest">
               Project Priority
@@ -114,6 +147,8 @@ export default function CreateProjectModal({
               ))}
             </div>
           </div>
+
+          {/* Action Buttons */}
           <div className="flex justify-end gap-4 pt-4">
             <button type="button" onClick={onClose} className="px-6 py-2.5 text-slate-500 font-bold hover:text-slate-700 transition-colors">
               Cancel
