@@ -9,6 +9,7 @@ import {
   Project 
 } from "../services/projectService";
 
+import { useAuth } from "../context/AuthContext";
 import { Task, TaskPriority } from "../interfaces";
 import CreateProjectModal from "../components/CreateProjectModal";
 import ProjectCard from "../components/ProjectCard";
@@ -29,6 +30,7 @@ import {
 } from "lucide-react";
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -36,6 +38,11 @@ export default function Dashboard() {
   const [sortBy, setSortBy] = useState<string>("newest");
   const [showCreateProject, setShowCreateProject] = useState<boolean>(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+
+  // Role check based on your profile dropdown strings
+  const canManageProjects = 
+    user?.position === "Project Manager" || 
+    user?.position === "Team Leader";
 
   const priorityWeight: Record<TaskPriority, number> = { 
     high: 3, 
@@ -53,10 +60,8 @@ export default function Dashboard() {
       const projectList = await getProjects();
       setProjects(projectList);
 
-      // --- FIX: Automatically set the first project as the active one if none exists ---
       if (!localStorage.getItem("currentProjectId") && projectList.length > 0) {
         localStorage.setItem("currentProjectId", String(projectList[0].id));
-        // Dispatch event so the Navbar updates the 'Team' link immediately
         window.dispatchEvent(new Event("storage"));
       }
 
@@ -79,14 +84,10 @@ export default function Dashboard() {
   }
 
   async function handleSaveProject(projectData: Project) {
+    if (!canManageProjects) return;
     try {
       if (editingProject?.id !== undefined) {
-        await updateProject(editingProject.id, {
-          name: projectData.name,
-          description: projectData.description,
-          priority: projectData.priority,
-          teamLeader: projectData.teamLeader
-        });
+        await updateProject(editingProject.id, projectData);
         toast.success("Project updated successfully");
       } else {
         await addProject(projectData as Partial<Project>);
@@ -96,24 +97,18 @@ export default function Dashboard() {
       setShowCreateProject(false);
       await loadDashboard();
     } catch (err: any) {
-      console.error("Save Project Error:", err);
       toast.error(err.message || "Failed to save project.");
     }
   }
 
   async function handleDeleteProject(id: number) {
-    if (window.confirm("Delete this project? This will also remove associated tasks.")) {
+    if (!canManageProjects) return;
+    if (window.confirm("Delete this project?")) {
       try {
         await deleteProject(id);
-        // If we deleted the active project, clear the selection
-        if (localStorage.getItem("currentProjectId") === String(id)) {
-          localStorage.removeItem("currentProjectId");
-          window.dispatchEvent(new Event("storage"));
-        }
         toast.success("Project removed");
         await loadDashboard();
       } catch (err: any) {
-        console.error("Delete Project Error:", err);
         toast.error("Unable to delete project.");
       }
     }
@@ -128,11 +123,9 @@ export default function Dashboard() {
         p.description?.toLowerCase().includes(lowerSearch)
       );
     }
-
     result.sort((a, b) => {
       const weightA = a.priority ? priorityWeight[a.priority as TaskPriority] : 0;
       const weightB = b.priority ? priorityWeight[b.priority as TaskPriority] : 0;
-      
       switch (sortBy) {
         case "priority-desc": return weightB - weightA;
         case "priority-asc": return weightA - weightB;
@@ -157,8 +150,9 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0b1220] p-6 md:p-10 transition-colors duration-300">
-      <div className="max-w-7xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="max-w-7xl mx-auto space-y-10">
         
+        {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-200 dark:border-slate-800 pb-8">
           <div>
             <div className="flex items-center gap-3 mb-2">
@@ -167,7 +161,7 @@ export default function Dashboard() {
               </div>
               <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">Dashboard</h1>
             </div>
-            <p className="text-slate-500 dark:text-slate-400 font-medium">Manage your projects and track performance.</p>
+            <p className="text-slate-500 dark:text-slate-400 font-medium">Manage mission critical projects.</p>
           </div>
           
           <div className="flex flex-wrap items-center gap-4">
@@ -181,15 +175,19 @@ export default function Dashboard() {
                 className="pl-10 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none w-full md:w-64 text-sm dark:text-white shadow-sm focus:ring-2 focus:ring-indigo-500/20 transition-all" 
               />
             </div>
-            <button 
-              onClick={() => setShowCreateProject(true)} 
-              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-3 rounded-2xl font-bold text-sm shadow-lg shadow-indigo-500/25 transition-all active:scale-95 whitespace-nowrap"
-            >
-              <Plus size={20} /> New Project
-            </button>
+
+            {canManageProjects && (
+              <button 
+                onClick={() => setShowCreateProject(true)} 
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-3 rounded-2xl font-bold text-sm shadow-lg shadow-indigo-500/25 transition-all active:scale-95 whitespace-nowrap"
+              >
+                <Plus size={20} /> New Project
+              </button>
+            )}
           </div>
         </div>
 
+        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
             { label: "Total Tasks", value: stats.total, icon: ListTodo, color: "text-indigo-600", bg: "bg-indigo-50 dark:bg-indigo-500/10" },
@@ -211,6 +209,7 @@ export default function Dashboard() {
           ))}
         </div>
 
+        {/* --- RESTORED: Progress & Breakdown Section --- */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-center space-y-6">
             <div className="flex items-center justify-between">
@@ -264,10 +263,11 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* --- Active Projects List --- */}
         {loading ? (
           <div className="flex flex-col items-center py-24">
             <Loader2 className="animate-spin text-indigo-500 mb-4" size={48} />
-            <p className="text-slate-500 font-medium tracking-wide">Synchronizing your dashboard...</p>
+            <p className="text-slate-500 font-medium tracking-wide">Synchronizing Mission Data...</p>
           </div>
         ) : (
           <div className="space-y-6">
@@ -278,19 +278,19 @@ export default function Dashboard() {
                   {processedProjects.length}
                 </span>
               </h2>
-              <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 group hover:border-indigo-500/50 hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-300 active:scale-[0.98]">
-                <SlidersHorizontal size={14} className="text-slate-400 group-hover:text-indigo-500 transition-colors duration-300 mr-2" />
+              <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 group hover:border-indigo-500/50 transition-all duration-300">
+                <SlidersHorizontal size={14} className="text-slate-400 mr-2" />
                 <select 
                   value={sortBy} 
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="appearance-none bg-transparent py-2.5 pr-8 outline-none text-[10px] font-black text-slate-600 dark:text-slate-200 cursor-pointer uppercase tracking-widest relative z-10"
+                  className="appearance-none bg-transparent py-2.5 pr-8 outline-none text-[10px] font-black text-slate-600 dark:text-slate-200 cursor-pointer uppercase tracking-widest"
                 >
-                  <option value="newest" className="dark:bg-slate-900">Newest First</option>
-                  <option value="priority-desc" className="dark:bg-slate-900">Priority: High to Low</option>
-                  <option value="priority-asc" className="dark:bg-slate-900">Priority: Low to High</option>
-                  <option value="name-asc" className="dark:bg-slate-900">Name: A - Z</option>
+                  <option value="newest">Newest First</option>
+                  <option value="priority-desc">Priority: High to Low</option>
+                  <option value="priority-asc">Priority: Low to High</option>
+                  <option value="name-asc">Name: A - Z</option>
                 </select>
-                <ChevronDown size={14} className="text-slate-400 -ml-6 pointer-events-none group-hover:text-indigo-500 group-hover:translate-y-0.5 transition-all duration-300" />
+                <ChevronDown size={14} className="text-slate-400 -ml-6 pointer-events-none" />
               </div>
             </div>
 
@@ -311,13 +311,15 @@ export default function Dashboard() {
                   <AlertCircle size={40} />
                 </div>
                 <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200">No active projects</h3>
-                <p className="text-slate-500 text-sm mt-2 mb-8 text-center max-w-sm">Launch your first mission by clicking the "New Project" button above.</p>
+                <p className="text-slate-500 text-sm mt-2 mb-8 text-center max-w-sm">
+                  {canManageProjects ? 'Launch your first mission by clicking the "New Project" button.' : 'You are not assigned to any projects yet.'}
+                </p>
               </div>
             )}
           </div>
         )}
 
-        {(showCreateProject || editingProject) && (
+        {(canManageProjects && (showCreateProject || editingProject)) && (
           <CreateProjectModal 
             editingProject={editingProject as any} 
             onClose={() => { setShowCreateProject(false); setEditingProject(null); }} 

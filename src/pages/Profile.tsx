@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import { UserCircle, Edit3, Check, X, Phone, Mail, User, Shield } from "lucide-react";
+import { UserCircle, Edit3, Check, X, Phone, Mail, User, Shield, Briefcase } from "lucide-react";
 import { updateProfile } from "../services/userService";
 import { toast } from "react-toastify";
-import axios from "axios";
+import { api } from "../services/authService";
 
 export default function Profile() {
   const { user, updateUser } = useAuth();
@@ -14,25 +14,22 @@ export default function Profile() {
     lastName: "",
     username: "",
     email: "",
-    phone: ""
+    phone: "",
+    position: ""
   });
 
-  // Fetch fresh profile from DB on mount
+  // Fetch profile on mount
   useEffect(() => {
     async function fetchProfile() {
       try {
-        const token = localStorage.getItem("token");
-        const res = await axios.get(
-          `${import.meta.env.VITE_API_BASE_URL}/users/profile`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        const res = await api.get("/users/profile");
         updateUser(res.data);
       } catch (err) {
         console.error("Profile fetch failed", err);
       }
     }
     fetchProfile();
-  }, []);
+  }, []); 
 
   // Sync form data whenever the user object updates
   useEffect(() => {
@@ -42,23 +39,22 @@ export default function Profile() {
         lastName: user.lastName || "",
         username: user.username || "",
         email: user.email || "",
-        phone: user.phone || ""
+        phone: user.phone || "",
+        position: user.position || ""
       });
     }
   }, [user]);
 
   const handleSave = async () => {
     try {
-      if (!user?.id) {
-        throw new Error("User session not found. Please log in again.");
-      }
-
+      if (!user?.id) throw new Error("User session not found.");
+      
       const result = await updateProfile(user.id, formData);
       updateUser({ ...user, ...result });
       toast.success("Profile updated successfully!");
       setIsEditing(false);
     } catch (error: any) {
-      toast.error(error.message || "Update failed");
+      toast.error(error.response?.data?.message || error.message || "Update failed");
     }
   };
 
@@ -69,7 +65,8 @@ export default function Profile() {
         lastName: user.lastName || "",
         username: user.username || "",
         email: user.email || "",
-        phone: user.phone || ""
+        phone: user.phone || "",
+        position: user.position || ""
       });
     }
     setIsEditing(false);
@@ -140,6 +137,35 @@ export default function Profile() {
               </div>
             </div>
 
+            {/* Position Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center border-t border-slate-100 dark:border-slate-800 pt-8">
+              <div className="flex items-center gap-2 text-slate-400">
+                <Briefcase size={16} />
+                <label className="text-xs font-black uppercase tracking-[0.2em]">Position</label>
+              </div>
+              <div className="md:col-span-2">
+                {isEditing ? (
+                  <select
+                    value={formData.position}
+                    onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                    className="w-full p-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 transition-all font-medium appearance-none"
+                  >
+                    <option value="">Select Position</option>
+                    <option>Project Manager</option>
+                    <option>Team Leader</option>
+                    <option>Senior Developer</option>
+                    <option>Developer</option>
+                    <option>UI/UX Designer</option>
+                    <option>QA Tester</option>
+                    <option>DevOps Engineer</option>
+                    <option>Intern</option>
+                  </select>
+                ) : (
+                  <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{user?.position || "Not Assigned"}</p>
+                )}
+              </div>
+            </div>
+
             {/* Email Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center border-t border-slate-100 dark:border-slate-800 pt-8">
               <div className="flex items-center gap-2 text-slate-400">
@@ -150,7 +176,7 @@ export default function Profile() {
                 {isEditing ? (
                   <input type="email" className="w-full p-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 transition-all font-medium" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} />
                 ) : (
-                  <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{user?.email || "No email provided"}</p>
+                  <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{user?.email}</p>
                 )}
               </div>
             </div>

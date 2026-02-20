@@ -11,7 +11,7 @@ const generateTokens = (userId) => {
   const accessToken = jwt.sign(
     { id: userId },
     CONFIG.JWT_SECRET,
-    { expiresIn: "15s" }
+    { expiresIn: "15m" } // Increased slightly from 2m for better UX during dev
   );
 
   const refreshToken = jwt.sign(
@@ -23,13 +23,12 @@ const generateTokens = (userId) => {
   return { accessToken, refreshToken };
 };
 
-
 /* =====================================================
    REGISTER
 ===================================================== */
 exports.register = async (req, res, next) => {
   try {
-    const { username, email, password, firstName, lastName, phone } = req.body;
+    const { username, email, password, firstName, lastName, phone, position } = req.body;
 
     const exists = await User.findOne({ where: { email } });
     if (exists)
@@ -43,7 +42,8 @@ exports.register = async (req, res, next) => {
       password: hash,
       firstName,
       lastName,
-      phone
+      phone,
+      position // Ensure position is saved on registration
     });
 
     res.status(201).json({
@@ -51,7 +51,8 @@ exports.register = async (req, res, next) => {
       user: {
         id: user.id,
         username: user.username,
-        email: user.email
+        email: user.email,
+        position: user.position
       }
     });
 
@@ -60,13 +61,15 @@ exports.register = async (req, res, next) => {
   }
 };
 
-
 /* =====================================================
    LOGIN
 ===================================================== */
 exports.login = async (req, res, next) => {
   try {
     const { identifier, password } = req.body;
+
+    // DEBUG LOGS - Remove after fixing
+    console.log("LOGIN ATTEMPT - Identifier:", identifier);
 
     const user = await User.findOne({
       where: {
@@ -77,8 +80,16 @@ exports.login = async (req, res, next) => {
       }
     });
 
-    if (!user || !(await bcrypt.compare(password, user.password)))
+    if (!user) {
+      console.log("LOGIN FAIL: User not found");
       return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      console.log("LOGIN FAIL: Password mismatch");
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
 
     /* Generate tokens */
     const { accessToken, refreshToken } = generateTokens(user.id);
@@ -87,21 +98,27 @@ exports.login = async (req, res, next) => {
     user.refreshToken = refreshToken;
     await user.save();
 
+    console.log("LOGIN SUCCESS:", user.username);
+
     res.json({
       user: {
         id: user.id,
         username: user.username,
-        email: user.email
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        position: user.position // Crucial for your Profile dropdown logic
       },
       accessToken,
       refreshToken
     });
 
   } catch (err) {
+    console.error("LOGIN ERROR:", err);
     next(err);
   }
 };
-
 
 /* =====================================================
    REFRESH TOKEN (ROTATION)
@@ -113,19 +130,14 @@ exports.refreshToken = async (req, res) => {
     return res.status(401).json({ message: "No refresh token provided" });
 
   try {
-    /* verify refresh token */
     const decoded = jwt.verify(refreshToken, CONFIG.JWT_SECRET);
-
     const user = await User.findByPk(decoded.id);
 
     if (!user || user.refreshToken !== refreshToken)
       return res.status(403).json({ message: "Invalid refresh token" });
 
-    /* Generate new tokens */
-    const { accessToken, refreshToken: newRefreshToken } =
-      generateTokens(user.id);
+    const { accessToken, refreshToken: newRefreshToken } = generateTokens(user.id);
 
-    /* rotate refresh token */
     user.refreshToken = newRefreshToken;
     await user.save();
 
@@ -138,7 +150,6 @@ exports.refreshToken = async (req, res) => {
     return res.status(403).json({ message: "Invalid or expired refresh token" });
   }
 };
-
 
 /* =====================================================
    LOGOUT

@@ -50,11 +50,9 @@ import { useEffect, useState } from "react";
     const [newComment, setNewComment] = useState("");
     const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
 
-    // --- FIX: Ensure currentProjectId is always synced when this page loads ---
     useEffect(() => {
       if (projectId) {
         localStorage.setItem("currentProjectId", projectId);
-        // Trigger a storage event so the Navbar (if listening) updates immediately
         window.dispatchEvent(new Event("storage"));
       }
     }, [projectId]);
@@ -68,14 +66,12 @@ import { useEffect, useState } from "react";
     async function loadInitialData() {
       if (numericProjectId === null || isNaN(numericProjectId)) return;
       
-      // FIX: Changed "token" to "accessToken"
       const token = localStorage.getItem("accessToken");
 
       try {
         const [allUsersRes, memberIdsRes] = await Promise.all([
           getUsers(),
           axios.get(`${import.meta.env.VITE_API_BASE_URL}/projects/${numericProjectId}/members`, {
-            // FIX: Using accessToken directly from localStorage for the headers
             headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` }
           })
         ]);

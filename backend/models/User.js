@@ -7,32 +7,27 @@ const User = sequelize.define("User", {
     autoIncrement: true,
     primaryKey: true,
   },
-
   username: {
     type: DataTypes.STRING,
     allowNull: false,
     unique: true,
   },
-
   email: {
     type: DataTypes.STRING,
     allowNull: false,
     unique: true,
   },
-
   password: {
     type: DataTypes.STRING,
     allowNull: false,
   },
-
   firstName: DataTypes.STRING,
   lastName: DataTypes.STRING,
   phone: DataTypes.STRING,
-
+  position: DataTypes.STRING, // Added Position field
   refreshToken: {
     type: DataTypes.TEXT,
   }
-
 }, { timestamps: true });
 
 module.exports = User;

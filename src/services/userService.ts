@@ -1,30 +1,21 @@
-import axios from "axios";
+import { api } from "./authService";
+import { User } from "../interfaces";
 
-const API = import.meta.env.VITE_API_BASE_URL;
-
-function authHeader() {
-  const token = localStorage.getItem("accessToken");
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-export interface User {
-  id: number; // Strictly number
-  username?: string;
-  email?: string;
-  firstName?: string;
-  lastName?: string;
-  phone?: string;
-  name?: string;
-}
-
+/**
+ * GET ALL USERS
+ * Uses the interceptor to automatically attach tokens and handle base URL.
+ */
 export async function getUsers(): Promise<User[]> {
   try {
-    const res = await axios.get(`${API}/users`, { headers: authHeader() });
+    const res = await api.get("/users");
 
+    // Map results to ensure consistent data types and name formatting
     return res.data.map((u: any) => ({
       ...u,
-      id: Number(u.id), // Force numeric ID
-      name: u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : u.username
+      id: Number(u.id), // Ensure ID is a number
+      name: u.firstName && u.lastName 
+        ? `${u.firstName} ${u.lastName}` 
+        : u.username
     }));
   } catch (error) {
     console.error("Error fetching users:", error);
@@ -32,7 +23,19 @@ export async function getUsers(): Promise<User[]> {
   }
 }
 
-export async function updateProfile(userId: any, profileData: any) {
-  const res = await axios.put(`${API}/users/profile`, profileData, { headers: authHeader() });
-  return res.data;
+/**
+ * UPDATE PROFILE
+ * Sends updated profile data (including position) to the backend.
+ * Note: Your backend controller uses the ID from the token (req.user.id),
+ * but we keep the userId parameter for flexibility if needed later.
+ */
+export async function updateProfile(userId: string | number, profileData: Partial<User>) {
+  try {
+    // We send profileData which now includes the 'position' field from the form
+    const res = await api.put("/users/profile", profileData);
+    return res.data;
+  } catch (error: any) {
+    // Re-throw so the frontend Toast can capture the error message
+    throw error;
+  }
 }
