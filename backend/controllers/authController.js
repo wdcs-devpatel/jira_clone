@@ -11,7 +11,7 @@ const generateTokens = (userId) => {
   const accessToken = jwt.sign(
     { id: userId },
     CONFIG.JWT_SECRET,
-    { expiresIn: "15m" } // Increased slightly from 2m for better UX during dev
+    { expiresIn: "15m" } 
   );
 
   const refreshToken = jwt.sign(
@@ -24,7 +24,7 @@ const generateTokens = (userId) => {
 };
 
 /* =====================================================
-   REGISTER
+   REGISTER — FIXED: Destructure and Save Position
 ===================================================== */
 exports.register = async (req, res, next) => {
   try {
@@ -43,7 +43,7 @@ exports.register = async (req, res, next) => {
       firstName,
       lastName,
       phone,
-      position // Ensure position is saved on registration
+      position // Save the role selected during signup
     });
 
     res.status(201).json({
@@ -68,9 +68,6 @@ exports.login = async (req, res, next) => {
   try {
     const { identifier, password } = req.body;
 
-    // DEBUG LOGS - Remove after fixing
-    console.log("LOGIN ATTEMPT - Identifier:", identifier);
-
     const user = await User.findOne({
       where: {
         [Op.or]: [
@@ -81,24 +78,18 @@ exports.login = async (req, res, next) => {
     });
 
     if (!user) {
-      console.log("LOGIN FAIL: User not found");
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      console.log("LOGIN FAIL: Password mismatch");
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    /* Generate tokens */
     const { accessToken, refreshToken } = generateTokens(user.id);
 
-    /* Save refresh token */
     user.refreshToken = refreshToken;
     await user.save();
-
-    console.log("LOGIN SUCCESS:", user.username);
 
     res.json({
       user: {
@@ -108,26 +99,23 @@ exports.login = async (req, res, next) => {
         firstName: user.firstName,
         lastName: user.lastName,
         phone: user.phone,
-        position: user.position // Crucial for your Profile dropdown logic
+        position: user.position 
       },
       accessToken,
       refreshToken
     });
 
   } catch (err) {
-    console.error("LOGIN ERROR:", err);
     next(err);
   }
 };
 
 /* =====================================================
-   REFRESH TOKEN (ROTATION)
+   REFRESH TOKEN
 ===================================================== */
 exports.refreshToken = async (req, res) => {
   const { refreshToken } = req.body;
-
-  if (!refreshToken)  
-    return res.status(401).json({ message: "No refresh token provided" });
+  if (!refreshToken) return res.status(401).json({ message: "No refresh token" });
 
   try {
     const decoded = jwt.verify(refreshToken, CONFIG.JWT_SECRET);
@@ -136,18 +124,13 @@ exports.refreshToken = async (req, res) => {
     if (!user || user.refreshToken !== refreshToken)
       return res.status(403).json({ message: "Invalid refresh token" });
 
-    const { accessToken, refreshToken: newRefreshToken } = generateTokens(user.id);
-
-    user.refreshToken = newRefreshToken;
+    const tokens = generateTokens(user.id);
+    user.refreshToken = tokens.refreshToken;
     await user.save();
 
-    res.json({
-      accessToken,
-      refreshToken: newRefreshToken
-    });
-
+    res.json(tokens);
   } catch (err) {
-    return res.status(403).json({ message: "Invalid or expired refresh token" });
+    return res.status(403).json({ message: "Token expired" });
   }
 };
 
@@ -157,18 +140,12 @@ exports.refreshToken = async (req, res) => {
 exports.logout = async (req, res) => {
   try {
     const { userId } = req.body;
-
-    if (!userId)
-      return res.status(400).json({ message: "User ID required" });
-
     const user = await User.findByPk(userId);
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    user.refreshToken = null;
-    await user.save();
-
-    res.json({ message: "Logged out successfully" });
-
+    if (user) {
+      user.refreshToken = null;
+      await user.save();
+    }
+    res.json({ message: "Logged out" });
   } catch (err) {
     res.status(500).json({ message: "Logout failed" });
   }

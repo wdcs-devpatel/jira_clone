@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { api } from "../services/authService";
+import { toast } from "react-toastify";
 import Modal from "../components/Modal";
 import { useAuth } from "../context/AuthContext";
 import { 
   Mail, Phone, Building2, UserCircle2, Shield,
-  UserPlus, UserMinus, ArrowLeft, Search,
-  Users, ExternalLink
+  UserPlus, ArrowLeft, Search,
+  Users, ExternalLink, Briefcase
 } from "lucide-react";
 
 interface User {
@@ -15,10 +16,13 @@ interface User {
   email?: string;
   phone?: string;
   avatar?: string;
+  position?: string;
+  username?: string;
 }
 
 export default function TeamMembers() {
   const { projectId } = useParams();
+  const navigate = useNavigate();
   const numericId = Number(projectId);
   const { user: loggedInUser } = useAuth();
 
@@ -30,7 +34,11 @@ export default function TeamMembers() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    load();
+    if (numericId && !isNaN(numericId)) {
+      load();
+    } else {
+      setLoading(false);
+    }
   }, [projectId]);
 
   async function load() {
@@ -43,63 +51,72 @@ export default function TeamMembers() {
         api.get(`/projects/${numericId}`)
       ]);
 
-      setAllUsers(usersRes.data);
-      // Normalize ownerId to Number
-      setOwnerId(Number(projectRes.data.userId));
+      const processedUsers = usersRes.data.map((u: any) => ({
+        ...u,
+        id: Number(u.id),
+        name: u.name || u.username || `User #${u.id}`,
+          position: u.position || "Developer" 
+      }));
 
-      const memberIds: number[] = membersRes.data;
+      setAllUsers(processedUsers);
       
-      // Normalizing types to ensure strict comparison works
-      setTeam(usersRes.data.filter((u: User) => memberIds.includes(Number(u.id))));
+      const fetchedOwnerId = Number(projectRes.data.userId || projectRes.data.ownerId);
+      setOwnerId(fetchedOwnerId);
 
-    } catch (err) {
+      const memberIds: number[] = membersRes.data.map((id: any) => Number(id));
+      setTeam(processedUsers.filter((u: User) => memberIds.includes(Number(u.id))));
+
+    } catch (err: any) {
       console.error("Load Error:", err);
+      if (err.response?.status === 404) {
+        toast.error("Project details not found.");
+        navigate("/dashboard");
+      }
     } finally {
       setLoading(false);
     }
   }
-
+ 
   async function addMember(userId: number) {
     try {
       await api.post(`/projects/${numericId}/members`, { userId });
-      load();
+      toast.success("Team member added");
+      await load(); 
     } catch (err: any) {
-      alert(err.response?.data?.message || "Only the project owner can add members");
+      toast.error(err.response?.data?.message || "Failed to add member");
     }
   }
 
   async function removeMember(e: React.MouseEvent, userId: number) {
-    // Stop propagation so the card's onClick details view doesn't trigger
-    e.stopPropagation();
+    e.stopPropagation(); 
     if (!window.confirm("Remove this member from the project?")) return;
 
     try {
       await api.delete(`/projects/${numericId}/members/${userId}`);
-      load();
+      toast.success("Member removed");
+      await load(); 
     } catch (err: any) {
-      alert(err.response?.data?.message || "Failed to remove member");
+      toast.error(err.response?.data?.message || "Failed to remove member");
     }
   }
 
-  // Normalizing IDs for non-members filtering
+  const isOwner = Number(loggedInUser?.id) === Number(ownerId);
+
   const nonMembers = allUsers.filter(
     u => !team.some(t => Number(t.id) === Number(u.id)) &&
-    (u.name || `User #${u.id}`).toLowerCase().includes(searchTerm.toLowerCase())
+    (u.name || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-[#0b1220]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Syncing Team...</p>
+        <div className="animate-pulse flex flex-col items-center gap-4">
+          <div className="w-12 h-12 bg-indigo-500 rounded-full"></div>
+          <p className="text-slate-500 font-bold uppercase text-xs tracking-widest">Syncing Squad...</p>
         </div>
       </div>
     );
   }
-
-  // Permission Check: Stable boolean for the owner status
-  const isOwner = Number(loggedInUser?.id) === Number(ownerId);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0b1220] p-6 md:p-10 transition-colors duration-300">
@@ -127,60 +144,50 @@ export default function TeamMembers() {
           </div>
         </div>
 
+        {/* --- Current Members Section --- */}
         <section>
           <div className="flex items-center gap-2 mb-8">
             <div className="w-8 h-1 bg-indigo-500 rounded-full"/>
-            <h2 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">
-              Current Members
-            </h2>
+            <h2 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Current Members</h2>
           </div>
 
-          {team.length === 0 ? (
-            <div className="bg-white dark:bg-slate-900/50 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-16 text-center">
-              <Users size={48} className="mx-auto text-slate-300 dark:text-slate-700 mb-4"/>
-              <p className="text-slate-500 italic">No collaborators assigned yet.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {team.map(u => (
-                <MemberCard
-                  key={u.id}
-                  user={u}
-                  isLeader={Number(u.id) === Number(ownerId)}
-                  canManage={isOwner}
-                  onDetails={()=>setSelectedUser(u)}
-                  onRemove={(e: React.MouseEvent)=>removeMember(e, u.id)}
-                />
-              ))}
-            </div>
-          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {team.map(u => (
+              <MemberCard
+                key={u.id}
+                user={u}
+                isLeader={Number(u.id) === Number(ownerId)}
+                canManage={isOwner} 
+                onDetails={()=>setSelectedUser(u)}
+                onRemove={(e: any)=>removeMember(e, u.id)}
+              />
+            ))}
+          </div>
         </section>
 
-        {/* --- Add Talent Section: Managed by isOwner check --- */}
+        {/* --- Add Talent Section --- */}
         <section>
           <div className="flex items-center gap-2 mb-8">
             <div className="w-8 h-1 bg-emerald-500 rounded-full"/>
-            <h2 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">
-              Add Talent
-            </h2>
+            <h2 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Add Talent</h2>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {nonMembers.map(user=>(
               <div key={user.id} className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl flex items-center justify-between transition-all hover:shadow-md">
-                <div className="flex items-center gap-3">
-                  <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${user.name||user.id}`} className="w-10 h-10 rounded-xl" alt="avatar"/>
-                  <div>
-                    <p className="font-bold text-sm text-slate-900 dark:text-white">{user.name||`User #${user.id}`}</p>
-                    <p className="text-[10px] text-slate-500 font-black uppercase">ID #{user.id}</p>
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${user.name}`} className="w-10 h-10 rounded-xl" alt="avatar"/>
+                  <div className="overflow-hidden">
+                    <p className="font-bold text-sm text-slate-900 dark:text-white truncate">{user.name}</p>
+                    {/* Role reflected in search results */}
+                    <p className="text-[9px] text-indigo-500 font-black uppercase truncate">{user.position}</p> 
                   </div>
                 </div>
                 
                 {isOwner && (
                   <button 
                     onClick={()=>addMember(user.id)} 
-                    className="p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white rounded-xl transition-all shadow-sm"
-                    title="Add to team"
+                    className="p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white rounded-xl transition-all shadow-sm flex-shrink-0"
                   >
                     <UserPlus size={18}/>
                   </button>
@@ -193,7 +200,6 @@ export default function TeamMembers() {
         <Modal isOpen={!!selectedUser} onClose={()=>setSelectedUser(null)}>
           {selectedUser && <UserDetails user={selectedUser}/>}
         </Modal>
-
       </div>
     </div>
   );
@@ -202,24 +208,23 @@ export default function TeamMembers() {
 /* MEMBER CARD */
 
 function MemberCard({user, onDetails, onRemove, isLeader, canManage}: any) {
-  const avatar=`https://api.dicebear.com/7.x/initials/svg?seed=${user.name||user.id}`;
-
   return(
     <div onClick={onDetails} className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-6 cursor-pointer transition-all hover:shadow-lg relative">
       <div className="flex items-center gap-5">
-        <img src={avatar} className="w-16 h-16 rounded-2xl shadow-sm" alt="avatar"/>
-        <div className="flex-1">
-          <h3 className="font-black text-slate-800 dark:text-white">{user.name||`User #${user.id}`}</h3>
+        <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${user.name}`} className="w-16 h-16 rounded-2xl shadow-sm" alt="avatar"/>
+        <div className="flex-1 overflow-hidden">
+          <h3 className="font-black text-slate-800 dark:text-white truncate">{user.name}</h3>
+          {/* Reflecting position on the card */}
+          <p className="text-[10px] text-indigo-500 font-black uppercase tracking-widest">{user.position}</p>
         </div>
 
-        {/* --- Visible Remove Button for Owner --- */}
         {canManage && !isLeader && (
           <button 
             onClick={(e) => {
-              e.stopPropagation(); // Critical Fix: prevents modal from opening
+              e.stopPropagation();
               onRemove(e);
             }} 
-            className="px-3 py-1.5 text-[10px] font-black bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500 hover:text-white dark:hover:bg-red-500 dark:hover:text-white rounded-xl transition-all shadow-sm uppercase tracking-wider"
+            className="px-3 py-1.5 text-[10px] font-black bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500 hover:text-white rounded-xl transition-all uppercase"
           >
             Remove
           </button>
@@ -228,40 +233,38 @@ function MemberCard({user, onDetails, onRemove, isLeader, canManage}: any) {
 
       <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800/50 flex justify-between items-center">
         <div className={`text-[10px] font-black px-3 py-1 rounded-full flex items-center gap-1.5
-          ${isLeader
-            ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
-            : "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400"}`}>
+          ${isLeader ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400" : "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400"}`}>
           <Shield size={12}/>
-          {isLeader ? "LEADER" : "MEMBER"}
+          {isLeader ? "YOU" : "MEMBER"}
         </div>
         <div className="text-xs font-bold text-slate-400 flex items-center gap-1.5 hover:text-indigo-500 transition-colors">
-          Profile <ExternalLink size={12}/>
+          View Details <ExternalLink size={12}/>
         </div>
       </div>
     </div>
   );
 }
 
-/* USER DETAILS */
+/* USER DETAILS MODAL */
 
 function UserDetails({user}: any) {
-  const avatar=`https://api.dicebear.com/7.x/initials/svg?seed=${user.name||user.id}`;
-
   return(
     <div className="p-2">
       <div className="flex items-center gap-6 mb-10">
-        <img src={avatar} className="w-24 h-24 rounded-3xl shadow-md" alt="avatar"/>
+        <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${user.name}`} className="w-24 h-24 rounded-3xl shadow-md" alt="avatar"/>
         <div>
-          <h2 className="text-3xl font-black text-slate-900 dark:text-white">{user.name||`User #${user.id}`}</h2>
-          <p className="text-indigo-600 dark:text-indigo-400 font-bold text-sm">Project Contributor</p>
+          <h2 className="text-3xl font-black text-slate-900 dark:text-white truncate">{user.name}</h2>
+          {/* Detailed Role View */}
+          <p className="text-indigo-600 dark:text-indigo-400 font-bold text-sm tracking-wide uppercase">{user.position}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Detail icon={<Mail size={18}/>} label="Email" value={user.email||"Not assigned"}/>
-        <Detail icon={<Phone size={18}/>} label="Phone" value={user.phone||"Not assigned"}/>
-        <Detail icon={<Building2 size={18}/>} label="Department" value="Engineering"/>
-        <Detail icon={<UserCircle2 size={18}/>} label="ID" value={`MEM-${user.id}`}/>
+        <Detail icon={<Mail size={18}/>} label="Email Address" value={user.email||"Not public"}/>
+        <Detail icon={<Phone size={18}/>} label="Phone Number" value={user.phone||"Not provided"}/>
+        {/* Role detail box */}
+        <Detail icon={<Briefcase size={18}/>} label="Professional Role" value={user.position}/> 
+        <Detail icon={<UserCircle2 size={18}/>} label="Member ID" value={`MEM-${user.id}`}/>
       </div>
     </div>
   );
@@ -273,8 +276,13 @@ function Detail({icon, label, value}: any) {
       <div className="p-3 bg-white dark:bg-slate-900 rounded-xl text-indigo-500 shadow-sm">{icon}</div>
       <div>
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
-        <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{value}</p>
+        <p className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate max-w-[150px]">{value}</p>
       </div>
     </div>
   );
 }
+
+
+
+
+

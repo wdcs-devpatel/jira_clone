@@ -12,13 +12,11 @@ module.exports = (req, res, next) => {
     return res.status(401).json({ message: "Invalid token format" });
 
   try {
-    // verify normally
     const decoded = jwt.verify(token, CONFIG.JWT_SECRET);
     req.user = decoded;
     next();
   } catch (err) {
 
-    // allow expired token ONLY for refresh endpoint
     if (req.originalUrl.includes("/refresh")) {
       const decoded = jwt.decode(token);
       if (!decoded)

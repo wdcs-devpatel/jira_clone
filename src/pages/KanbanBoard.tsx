@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import axios from "axios"; 
-import { ArrowLeft, MessageSquare, Pencil, Trash2, X, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, MessageSquare, Pencil, Trash2, X, CheckCircle2, Lock } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 import {
@@ -50,6 +50,17 @@ export default function KanbanBoard() {
   const [newComment, setNewComment] = useState("");
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
 
+  // --- PERMISSION LOGIC ---
+  const userPosition = user?.position?.toLowerCase().trim() || "";
+  
+  // Granting full management access to PM, Team Leader, and QA roles
+  const canManageTasks = [
+    "project manager", 
+    "team leader", 
+    "qa", 
+    "qa tester"
+  ].includes(userPosition);
+
   useEffect(() => {
     if (projectId) {
       localStorage.setItem("currentProjectId", projectId);
@@ -67,7 +78,6 @@ export default function KanbanBoard() {
     if (numericProjectId === null || isNaN(numericProjectId)) return;
     
     try {
-      // Fetch all users and project members simultaneously
       const [allUsers, memberIdsRes] = await Promise.all([
         getUsers(),
         axios.get(`${import.meta.env.VITE_API_BASE_URL}/projects/${numericProjectId}/members`, {
@@ -77,8 +87,6 @@ export default function KanbanBoard() {
 
       const memberIds: number[] = memberIdsRes.data;
 
-      // Logic: Prioritize members but show all eligible users so new users are assignable
-      // We filter out Project Managers globally as they cannot be assignees
       const sortedUsers = allUsers.sort((a: any, b: any) => {
         const aIsMember = memberIds.includes(a.id);
         const bIsMember = memberIds.includes(b.id);
@@ -105,13 +113,21 @@ export default function KanbanBoard() {
   }
   
   const handleDragStart = (e: React.DragEvent, taskId: TaskId) => {
+    if (!canManageTasks) {
+      e.preventDefault();
+      return;
+    }
     e.dataTransfer.setData("taskId", String(taskId));
   };
 
-  const onDragOver = (e: React.DragEvent) => e.preventDefault();
+  const onDragOver = (e: React.DragEvent) => {
+    if (canManageTasks) e.preventDefault();
+  };
 
   const onDrop = async (e: React.DragEvent, newStatus: Status) => {
     e.preventDefault();
+    if (!canManageTasks) return;
+
     const taskId = e.dataTransfer.getData("taskId");
     if (taskId) {
       if (newStatus === "done") {
@@ -129,6 +145,9 @@ export default function KanbanBoard() {
   };
 
   const openModal = (task: any = null, defaultStatus: Status = "todo") => {
+    // Only allow "New Task" creation for Managers/Leaders/QA, but let everyone open existing tasks
+    if (!canManageTasks && !task) return; 
+
     setActiveTab("general"); 
     if (task) {
       setEditingTask(task);
@@ -146,7 +165,6 @@ export default function KanbanBoard() {
       setPriority("medium");
       setTargetStatus(defaultStatus);
       
-      // Prevent Project Manager from being the default assignee
       const isManager = user?.position === "Project Manager";
       setAssigneeId(isManager ? "" : String(user?.id || ""));
       
@@ -165,6 +183,9 @@ export default function KanbanBoard() {
   };
 
   async function handleSave() {
+    // Prevent non-authorized roles from creating tasks, but allow editing existing ones for subtask/comment collab
+    if (!canManageTasks && !editingTask) return; 
+
     if (!title.trim() || numericProjectId === null || isNaN(numericProjectId)) return;
 
     const taskData = {
@@ -192,6 +213,7 @@ export default function KanbanBoard() {
   }
 
   async function handleDelete(taskId: TaskId) {
+    if (!canManageTasks) return;
     if (!window.confirm("Are you sure?")) return;
     try {
       await deleteTask(taskId);
@@ -202,6 +224,7 @@ export default function KanbanBoard() {
   }
 
   const addSubtask = () => {
+    // All members can add subtasks
     setSubtasks([...subtasks, { id: Date.now(), text: "", completed: false }]);
   };
 
@@ -231,9 +254,16 @@ export default function KanbanBoard() {
       )}
 
       <div className="max-w-7xl mx-auto">
-        <Link to="/dashboard" className="text-slate-500 hover:text-indigo-500 flex items-center gap-2 mb-8 text-xs font-bold uppercase tracking-widest transition-colors">
-          <ArrowLeft size={14} /> Back to Dashboard
-        </Link>
+        <div className="flex justify-between items-center mb-8">
+           <Link to="/dashboard" className="text-slate-500 hover:text-indigo-500 flex items-center gap-2 text-xs font-bold uppercase tracking-widest transition-colors">
+            <ArrowLeft size={14} /> Back to Dashboard
+          </Link>
+          {!canManageTasks && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-200 dark:border-indigo-800">
+              Collab Mode (Subtasks & Comments Only)
+            </div>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {COLUMNS.map((col) => (
@@ -243,9 +273,9 @@ export default function KanbanBoard() {
                 status={col.key}
                 tasks={tasks.filter((t) => t.status === col.key)}
                 users={users} 
-                onEdit={openModal}
-                onDelete={handleDelete}
-                onAddClick={() => openModal(null, col.key)}
+                onEdit={openModal} 
+                onDelete={canManageTasks ? handleDelete : () => {}}
+                onAddClick={canManageTasks ? () => openModal(null, col.key) : () => {}}
                 onDragStart={handleDragStart}
               />
             </div>
@@ -260,7 +290,7 @@ export default function KanbanBoard() {
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3">
                 <span className="w-2 h-8 bg-indigo-500 rounded-full"></span>
-                {editingTask ? "Edit Task" : "New Task"}
+                {editingTask ? "Task Details" : "New Task"}
               </h2>
               <button onClick={closeModal} className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
                 <X size={24} />
@@ -282,11 +312,11 @@ export default function KanbanBoard() {
                   <div className="space-y-6">
                     <div>
                       <label className="text-[11px] font-bold uppercase text-slate-400 dark:text-slate-500 mb-2 block tracking-widest">Task Title</label>
-                      <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-5 py-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:border-indigo-500 outline-none" />
+                      <input disabled={!canManageTasks} autoFocus value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-5 py-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:border-indigo-500 outline-none disabled:opacity-70" />
                     </div>
                     <div>
                       <label className="text-[11px] font-bold uppercase text-slate-400 dark:text-slate-500 mb-2 block tracking-widest">Description</label>
-                      <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="w-full px-5 py-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:border-indigo-500 outline-none resize-none" />
+                      <textarea disabled={!canManageTasks} value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="w-full px-5 py-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:border-indigo-500 outline-none resize-none disabled:opacity-70" />
                     </div>
                   </div>
 
@@ -295,15 +325,14 @@ export default function KanbanBoard() {
                       <label className="text-[11px] font-bold uppercase text-slate-400 dark:text-slate-500 mb-3 block tracking-widest">Priority</label>
                       <div className="grid grid-cols-3 gap-3">
                         {PRIORITY_LIST.map((p) => (
-                          <button key={p.value} onClick={() => setPriority(p.value as Priority)} className={`py-2.5 rounded-xl border text-[10px] font-black uppercase transition-all ${priority === p.value ? `${p.bg} ${p.color} ring-2 ring-indigo-500` : "border-slate-200 dark:border-slate-800 text-slate-400 bg-slate-50 dark:bg-slate-900/30 hover:border-slate-300"}`}>{p.label}</button>
+                          <button disabled={!canManageTasks} key={p.value} onClick={() => setPriority(p.value as Priority)} className={`py-2.5 rounded-xl border text-[10px] font-black uppercase transition-all ${priority === p.value ? `${p.bg} ${p.color} ring-2 ring-indigo-500` : "border-slate-200 dark:border-slate-800 text-slate-400 bg-slate-50 dark:bg-slate-900/30 hover:border-slate-300 disabled:opacity-50"}`}>{p.label}</button>
                         ))}
                       </div>
                     </div>
                     <div>
                       <label className="text-[11px] font-bold uppercase text-slate-400 dark:text-slate-500 mb-2 block tracking-widest">Assignee</label>
-                      <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 focus:border-indigo-500 outline-none">
+                      <select disabled={!canManageTasks} value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 focus:border-indigo-500 outline-none disabled:opacity-70">
                         <option value="">Select Assignee</option>
-                        {/* Exclude Project Managers from assignee list */}
                         {users.filter(u => u.position !== "Project Manager").map(u => (
                           <option key={u.id} value={String(u.id)}>{u.name || u.username}</option>
                         ))}
@@ -349,10 +378,12 @@ export default function KanbanBoard() {
                               </div>
                               <div className="flex items-center gap-2">
                                 <span className="text-[9px] text-slate-400 dark:text-slate-600 font-mono">{new Date(comment.id).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button onClick={() => { setEditingCommentId(comment.id); setNewComment(comment.text); }} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 rounded text-slate-400 hover:text-indigo-600 transition-colors"><Pencil size={12}/></button>
-                                  <button onClick={() => setComments(comments.filter(c => c.id !== comment.id))} className="p-1 hover:bg-red-50 dark:hover:bg-slate-800 rounded text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={12}/></button>
-                                </div>
+                                { (canManageTasks || comment.author === user?.username) && (
+                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onClick={() => { setEditingCommentId(comment.id); setNewComment(comment.text); }} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 rounded text-slate-400 hover:text-indigo-600 transition-colors"><Pencil size={12}/></button>
+                                        <button onClick={() => setComments(comments.filter(c => c.id !== comment.id))} className="p-1 hover:bg-red-50 dark:hover:bg-slate-800 rounded text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={12}/></button>
+                                    </div>
+                                )}
                               </div>
                             </div>
                             <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed pl-8">{comment.text}</p>
@@ -387,9 +418,12 @@ export default function KanbanBoard() {
 
             <div className="flex justify-end gap-6 mt-8 pt-8 border-t border-slate-100 dark:border-slate-800/80">
                 <button onClick={closeModal} className="text-[11px] font-black uppercase text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">Dismiss</button>
-                <button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-500 text-white px-10 py-4 rounded-2xl text-[11px] font-black uppercase transition-all shadow-xl">
-                  {editingTask ? "Update Task" : "Create Task"}
-                </button>
+                {/* Everyone can save changes if they are editing an existing task (e.g., adding a subtask) */}
+                {(canManageTasks || editingTask) && (
+                    <button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-500 text-white px-10 py-4 rounded-2xl text-[11px] font-black uppercase transition-all shadow-xl">
+                      Save Changes
+                    </button>
+                )}
             </div>
           </div>
         </div>

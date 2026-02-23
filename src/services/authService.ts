@@ -66,10 +66,9 @@ export const registerUser = async (userData: {
   username: string;
   email: string;
   phone: string;
-  position: string; // ADDED: Now explicitly expects the position/role
+  position: string; 
   password: string;
 }) => {
-  // The full userData object is sent to the backend register controller
   const res = await axios.post(`${API_URL}/register`, userData);
   return res.data;
 };

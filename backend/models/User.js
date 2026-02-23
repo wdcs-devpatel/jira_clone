@@ -24,7 +24,7 @@ const User = sequelize.define("User", {
   firstName: DataTypes.STRING,
   lastName: DataTypes.STRING,
   phone: DataTypes.STRING,
-  position: DataTypes.STRING, // Added Position field
+  position: DataTypes.STRING, // Ensure this exists to store roles
   refreshToken: {
     type: DataTypes.TEXT,
   }
