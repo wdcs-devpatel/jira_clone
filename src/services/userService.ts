@@ -23,12 +23,7 @@ export async function getUsers(): Promise<User[]> {
   }
 }
 
-/**
- * UPDATE PROFILE
- * Sends updated profile data (including position) to the backend.
- * Note: Your backend controller uses the ID from the token (req.user.id),
- * but we keep the userId parameter for flexibility if needed later.
- */
+
 export async function updateProfile(userId: string | number, profileData: Partial<User>) {
   try {
     // We send profileData which now includes the 'position' field from the form

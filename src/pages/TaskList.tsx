@@ -1,9 +1,8 @@
 import { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom"; 
 import { getAllTasks, searchTasks } from "../services/taskService";
 import { getProjects } from "../services/projectService";
 import { PRIORITIES } from "../utils/constants";
-import Modal from "../components/Modal";
-import TaskDetails from "./TaskDetails";
 import {
   CheckCircle2,
   Circle,
@@ -25,13 +24,12 @@ interface Task {
 }
 
 export default function TaskList() {
+  const navigate = useNavigate(); 
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [projectMap, setProjectMap] = useState<Record<string, string>>({});
   
-  // Track if it's the first render to prevent double-firing loadInitialData
   const isInitialMount = useRef(true);
 
   /* ---------------- INITIAL LOAD ---------------- */
@@ -67,7 +65,6 @@ export default function TaskList() {
 
   /* ---------------- BACKEND SEARCH ---------------- */
   useEffect(() => {
-    // Skip the search effect on the very first mount since loadInitialData handles it
     if (isInitialMount.current) {
       isInitialMount.current = false;
       return;
@@ -75,7 +72,7 @@ export default function TaskList() {
 
     const delay = setTimeout(() => {
       fetchSearchResults();
-    }, 400); // 400ms Debounce
+    }, 400); 
 
     return () => clearTimeout(delay);
   }, [searchTerm]);
@@ -146,21 +143,20 @@ export default function TaskList() {
                 placeholder="Search tasks..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none text-sm w-64 dark:text-white"
+                className="pl-10 pr-4 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none text-sm w-64 dark:text-white transition-all"
               />
             </div>
 
-            <button className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+            <button className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-indigo-500 transition-colors">
               <Filter size={18}/>
             </button>
           </div>
         </div>
 
         {/* Table / Content Area */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden min-h-[400px]">
+        <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden min-h-[400px]">
           
           {loading ? (
-            /* Loading State inside the table area to prevent layout shift */
             <div className="flex flex-col items-center justify-center py-32">
               <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4" />
               <p className="text-slate-500 dark:text-slate-400 font-medium">Updating tasks...</p>
@@ -168,7 +164,7 @@ export default function TaskList() {
           ) : (
             <>
               {/* Header Row */}
-              <div className="grid grid-cols-12 px-8 py-4 bg-slate-50 dark:bg-slate-800/50 border-b text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              <div className="grid grid-cols-12 px-8 py-5 bg-slate-50 dark:bg-slate-800/50 border-b text-[10px] font-black text-slate-400 uppercase tracking-widest">
                 <div className="col-span-6">Task Title</div>
                 <div className="col-span-2 text-center">Priority</div>
                 <div className="col-span-2 text-center">Project</div>
@@ -184,25 +180,26 @@ export default function TaskList() {
                   return (
                     <div
                       key={task.id}
-                      onClick={() => setSelectedTask(task)}
-                      className="grid grid-cols-12 px-8 py-5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                    
+                      onClick={() => navigate(`/kanban/${task.projectId}/task/${task.id}`)}
+                      className="grid grid-cols-12 px-8 py-6 cursor-pointer hover:bg-indigo-50/30 dark:hover:bg-indigo-500/5 transition-all group"
                     >
-                      <div className="col-span-6 font-semibold text-slate-700 dark:text-slate-200">
+                      <div className="col-span-6 font-bold text-slate-700 dark:text-slate-200 group-hover:text-indigo-600 transition-colors">
                         {task.title}
                       </div>
 
                       <div className="col-span-2 flex justify-center">
-                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black ${p.bg} ${p.color}`}>
+                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase ${p.bg} ${p.color}`}>
                           {p.label}
                         </span>
                       </div>
 
-                      <div className="col-span-2 text-center text-sm text-slate-500 dark:text-slate-400">
+                      <div className="col-span-2 text-center text-xs font-bold text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">
                         {projectMap[String(task.projectId)] || "Unassigned"}
                       </div>
 
                       <div className="col-span-2 flex justify-end">
-                        <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold ${status.style}`}>
+                        <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase ${status.style}`}>
                           {status.icon} {status.label}
                         </div>
                       </div>
@@ -213,20 +210,20 @@ export default function TaskList() {
 
               {/* Empty State */}
               {tasks.length === 0 && (
-                <div className="text-center py-24">
-                  <ClipboardList size={40} className="mx-auto text-slate-300"/>
-                  <p className="text-slate-500 mt-4">No tasks found matching "{searchTerm}"</p>
+                <div className="text-center py-24 flex flex-col items-center">
+                  <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-full mb-4">
+                    <ClipboardList size={40} className="text-slate-300 dark:text-slate-600"/>
+                  </div>
+                  <h3 className="text-slate-900 dark:text-white font-bold">No tasks found</h3>
+                  <p className="text-slate-500 text-sm mt-1">Try adjusting your search for "{searchTerm}"</p>
                 </div>
               )}
             </>
           )}
         </div>
       </div>
-
-      {/* Modal */}
-      <Modal isOpen={!!selectedTask} onClose={() => setSelectedTask(null)}>
-        {selectedTask && <TaskDetails task={selectedTask}/>}
-      </Modal>
     </div>
   );
 }
+
+  

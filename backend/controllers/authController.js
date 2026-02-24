@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const { Op } = require("sequelize");
 const { CONFIG } = require("../config/db");
-
+  
 /* =====================================================
    HELPER — GENERATE TOKENS
 ===================================================== */
@@ -43,7 +43,7 @@ exports.register = async (req, res, next) => {
       firstName,
       lastName,
       phone,
-      position // Save the role selected during signup
+      position 
     });
 
     res.status(201).json({

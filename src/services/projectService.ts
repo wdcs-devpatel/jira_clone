@@ -10,9 +10,14 @@ export interface Project {
   teamLeader?: string;
 }
 
-/* GET PROJECTS */
-export const getProjects = async (): Promise<Project[]> => {
-  const res = await api.get(BASE);
+  
+export const getProjects = async (search: string = "", sort: string = "newest"): Promise<Project[]> => {
+  const res = await api.get(BASE, {
+    params: {
+      search: search,
+      sort: sort
+    }
+  });
   return res.data;
 };
 

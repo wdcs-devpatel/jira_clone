@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { toast } from "react-toastify"; 
 import { getAllTasks } from "../services/taskService";
 import { 
@@ -10,7 +10,7 @@ import {
 } from "../services/projectService";
 
 import { useAuth } from "../context/AuthContext";
-import { Task, TaskPriority } from "../interfaces";
+import { Task } from "../interfaces";
 import CreateProjectModal from "../components/CreateProjectModal";
 import ProjectCard from "../components/ProjectCard";
 
@@ -44,20 +44,10 @@ export default function Dashboard() {
     return role === "project manager";
   }, [user]);
 
-  const priorityWeight: Record<TaskPriority, number> = { 
-    high: 3, 
-    medium: 2, 
-    low: 1 
-  };
-
-  useEffect(() => {
-    loadDashboard();
-  }, []);
-
-  async function loadDashboard() {
+  const loadDashboard = useCallback(async (search: string, sort: string) => {
     setLoading(true);
     try {
-      const projectList = await getProjects();
+      const projectList = await getProjects(search, sort);
       setProjects(projectList);
 
       if (!localStorage.getItem("currentProjectId") && projectList.length > 0) {
@@ -81,7 +71,15 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      loadDashboard(searchTerm, sortBy);
+    }, 400); 
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm, sortBy, loadDashboard]);
 
   async function handleSaveProject(projectData: Project) {
     if (!canManageProjects) return;
@@ -95,7 +93,7 @@ export default function Dashboard() {
       }
       setEditingProject(null);
       setShowCreateProject(false);
-      await loadDashboard();
+      await loadDashboard(searchTerm, sortBy);
     } catch (err: any) {
       toast.error(err.message || "Failed to save project.");
     }
@@ -107,36 +105,12 @@ export default function Dashboard() {
       try {
         await deleteProject(id);
         toast.success("Project removed");
-        await loadDashboard();
+        await loadDashboard(searchTerm, sortBy);
       } catch (err: any) {
         toast.error("Unable to delete project.");
       }
     }
   }
-
-  const processedProjects = useMemo(() => {
-    let result = [...projects];
-    if (searchTerm) {
-      const lowerSearch = searchTerm.toLowerCase();
-      result = result.filter(p => 
-        p.name.toLowerCase().includes(lowerSearch) || 
-        p.description?.toLowerCase().includes(lowerSearch)
-      );
-    }
-    result.sort((a, b) => {
-      const weightA = a.priority ? priorityWeight[a.priority as TaskPriority] : 0;
-      const weightB = b.priority ? priorityWeight[b.priority as TaskPriority] : 0;
-      switch (sortBy) {
-        case "priority-desc": return weightB - weightA;
-        case "priority-asc": return weightA - weightB;
-        case "name-asc": return a.name.localeCompare(b.name);
-        case "name-desc": return b.name.localeCompare(a.name);
-        case "newest": return (b.id || 0) - (a.id || 0); 
-        default: return 0;
-      }
-    });
-    return result;
-  }, [projects, searchTerm, sortBy]);
 
   const stats = useMemo(() => {
     const total = tasks.length;
@@ -176,7 +150,6 @@ export default function Dashboard() {
               />
             </div>
 
-            {/* Role-Based Action: "New Project" Button */}
             {canManageProjects && (
               <button 
                 onClick={() => setShowCreateProject(true)} 
@@ -188,13 +161,13 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Stats Grid */}
+        {/* Stats Grid - REORDERED: Total -> To Do -> In Progress -> Completed */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
             { label: "Total Tasks", value: stats.total, icon: ListTodo, color: "text-indigo-600", bg: "bg-indigo-50 dark:bg-indigo-500/10" },
-            { label: "Completed", value: stats.completed, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-500/10" },
-            { label: "In Progress", value: stats.inProgress, icon: Clock, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-500/10" },
             { label: "To Do", value: stats.todo, icon: LayoutDashboard, color: "text-slate-600", bg: "bg-slate-50 dark:bg-slate-500/10" },
+            { label: "In Progress", value: stats.inProgress, icon: Clock, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-500/10" },
+            { label: "Completed", value: stats.completed, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-500/10" },
           ].map((stat, idx) => (
             <div key={idx} className="rounded-3xl p-6 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm transition-all hover:shadow-md group">
               <div className="flex items-start justify-between">
@@ -238,7 +211,7 @@ export default function Dashboard() {
                   className="bg-indigo-600 h-full rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(79,70,229,0.5)] relative overflow-hidden" 
                   style={{ width: `${progress}%` }} 
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse" />
+                  <div className="absolute inset-0 bg-gradient-r from-transparent via-white/20 to-transparent animate-pulse" />
                 </div>
               </div>
             </div>
@@ -265,60 +238,58 @@ export default function Dashboard() {
         </div>
 
         {/* Project Section */}
-        {loading ? (
-          <div className="flex flex-col items-center py-24">
-            <Loader2 className="animate-spin text-indigo-500 mb-4" size={48} />
-            <p className="text-slate-500 font-medium tracking-wide">Synchronizing Mission Data...</p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center px-4">
-              <h2 className="text-xl font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight flex items-center gap-2">
-                Active Projects
-                <span className="text-xs font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md">
-                  {processedProjects.length}
-                </span>
-              </h2>
-              <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 group hover:border-indigo-500/50 transition-all duration-300">
-                <SlidersHorizontal size={14} className="text-slate-400 mr-2" />
-                <select 
-                  value={sortBy} 
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="appearance-none bg-transparent py-2.5 pr-8 outline-none text-[10px] font-black text-slate-600 dark:text-slate-200 cursor-pointer uppercase tracking-widest"
-                >
-                  <option value="newest">Newest First</option>
-                  <option value="priority-desc">Priority: High to Low</option>
-                  <option value="priority-asc">Priority: Low to High</option>
-                  <option value="name-asc">Name: A - Z</option>
-                </select>
-                <ChevronDown size={14} className="text-slate-400 -ml-6 pointer-events-none" />
-              </div>
+        <div className="space-y-6">
+          <div className="flex justify-between items-center px-4">
+            <h2 className="text-xl font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight flex items-center gap-2">
+              Active Projects
+              <span className="text-xs font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md">
+                {projects.length}
+              </span>
+            </h2>
+            <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 group hover:border-indigo-500/50 transition-all duration-300">
+              <SlidersHorizontal size={14} className="text-slate-400 mr-2" />
+              <select 
+                value={sortBy} 
+                onChange={(e) => setSortBy(e.target.value)}
+                className="appearance-none bg-transparent py-2.5 pr-8 outline-none text-[10px] font-black text-slate-600 dark:text-slate-200 cursor-pointer uppercase tracking-widest"
+              >
+                <option value="newest">Newest First</option>
+                <option value="priority-desc">Priority: High to Low</option>
+                <option value="priority-asc">Priority: Low to High</option>
+                <option value="name-asc">Name: A - Z</option>
+              </select>
+              <ChevronDown size={14} className="text-slate-400 -ml-6 pointer-events-none" />
             </div>
-
-            {processedProjects.length > 0 ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {processedProjects.map((p) => (
-                  <ProjectCard 
-                    key={p.id} 
-                    project={p as any} 
-                    onEdit={(proj) => setEditingProject(proj as any)} 
-                    onDelete={handleDeleteProject} 
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-slate-900/50 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[3rem]">
-                <div className="p-5 bg-slate-100 dark:bg-slate-800 rounded-full mb-4 text-slate-400">
-                  <AlertCircle size={40} />
-                </div>
-                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200">No active projects</h3>
-                <p className="text-slate-500 text-sm mt-2 mb-8 text-center max-w-sm">
-                  {canManageProjects ? 'Launch your first mission by clicking the "New Project" button.' : 'You are not assigned to any projects yet.'}
-                </p>
-              </div>
-            )}
           </div>
-        )}
+
+          {loading ? (
+            <div className="flex flex-col items-center py-24">
+              <Loader2 className="animate-spin text-indigo-500 mb-4" size={48} />
+              <p className="text-slate-500 font-medium tracking-wide">Synchronizing Mission Data...</p>
+            </div>
+          ) : projects.length > 0 ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {projects.map((p) => (
+                <ProjectCard 
+                  key={p.id} 
+                  project={p as any} 
+                  onEdit={(proj) => setEditingProject(proj as any)} 
+                  onDelete={handleDeleteProject} 
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-slate-900/50 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[3rem]">
+              <div className="p-5 bg-slate-100 dark:bg-slate-800 rounded-full mb-4 text-slate-400">
+                <AlertCircle size={40} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200">No projects found</h3>
+              <p className="text-slate-500 text-sm mt-2 mb-8 text-center max-w-sm">
+                Try adjusting your search or filters to find what you're looking for.
+              </p>
+            </div>
+          )}
+        </div>
 
         {(canManageProjects && (showCreateProject || editingProject)) && (
           <CreateProjectModal 

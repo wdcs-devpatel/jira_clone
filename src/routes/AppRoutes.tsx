@@ -6,6 +6,7 @@ import Login from "../pages/Login";
 import Signup from "../pages/Signup";
 import Dashboard from "../pages/Dashboard";
 import KanbanBoard from "../pages/KanbanBoard";
+import TaskDetails from "../pages/TaskDetails"; // Import the page
 import TaskList from "../pages/TaskList";
 import TeamMembers from "../pages/TeamMembers";
 import Profile from "../pages/Profile";
@@ -25,6 +26,8 @@ function AppRoutes() {
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/kanban/:projectId" element={<KanbanBoard />} />
+          {/* New route for Task Details Page */}
+          <Route path="/kanban/:projectId/task/:taskId" element={<TaskDetails />} />
           <Route path="/tasks" element={<TaskList />} />
           <Route path="/team/:projectId" element={<TeamMembers />} />
           <Route path="/profile" element={<Profile />} />

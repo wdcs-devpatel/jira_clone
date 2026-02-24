@@ -24,8 +24,7 @@ export default function CreateProjectModal({
   const [teamLeader, setTeamLeader] = useState<string>(""); 
   const [managers, setManagers] = useState<UserInterface[]>([]); 
 
-  // --- UPDATED PERMISSION CHECK ---
-  // Standardizing role strings to include 'QA Tester' as a management role 
+
   const userPosition = user?.position?.toLowerCase().trim() || "";
   const canManage = [
     "project manager", 
@@ -38,7 +37,6 @@ export default function CreateProjectModal({
     async function loadManagers() {
       try {
         const allUsers = await getUsers();
-        // Filter dropdown to show all potential leads (Managers, Team Leaders, and QA)
         const filtered = allUsers.filter((u) => {
           const pos = u.position?.toLowerCase().trim() || "";
           return [
@@ -65,7 +63,6 @@ export default function CreateProjectModal({
       setName("");
       setDescription("");
       setPriority("medium");
-      // Default team leader to current user if they have management rights
       setTeamLeader(canManage ? user?.username || "" : "");
     }
   }, [editingProject, user, canManage]);
@@ -73,8 +70,7 @@ export default function CreateProjectModal({
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     
-    // Final security check before saving
-    if (!canManage) {
+      if (!canManage) {
       alert("Unauthorized: Only Project Managers, Team Leaders, or QA can manage projects.");
       return;
     }
