@@ -22,13 +22,14 @@ api.interceptors.request.use((config) => {
 });
 
 /* ==============================
-   AUTO REFRESH TOKEN
+   AUTO REFRESH & ERROR HANDLING
 ============================== */
 api.interceptors.response.use(
   (res) => res,
   async (err) => {
     const originalRequest = err.config;
 
+    // Handle Token Expiration
     if (err.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
@@ -49,10 +50,16 @@ api.interceptors.response.use(
         return api.request(originalRequest);
 
       } catch (refreshError) {
+        // ✅ Clear everything on failure to prevent 403 loops
         localStorage.clear();
         window.location.href = "/";
         return Promise.reject(refreshError);
       }
+    }
+
+    // ✅ Log 403 errors specifically for RBAC debugging
+    if (err.response?.status === 403) {
+      console.error("RBAC Forbidden: User lacks required permissions for this action.");
     }
 
     return Promise.reject(err);
@@ -60,20 +67,16 @@ api.interceptors.response.use(
 );
 
 /* ==============================
-   LOGIN
+   AUTH ACTIONS
 ============================== */
 export const loginUser = async (identifier: string, password: string) => {
   const res = await axios.post(`${AUTH_URL}/login`, {
     identifier,
     password
   });
-
   return res.data;
 };
 
-/* ==============================
-   REGISTER (NO POSITION)
-============================== */
 export const registerUser = async (userData: {
   firstName: string;
   lastName: string;
@@ -86,9 +89,7 @@ export const registerUser = async (userData: {
   return res.data;
 };
 
-/* ==============================
-   LOGOUT
-============================== */
 export const logoutUser = () => {
   localStorage.clear();
+  window.location.href = "/";
 };

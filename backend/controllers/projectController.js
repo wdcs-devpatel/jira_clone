@@ -1,5 +1,4 @@
-const Project = require("../models/Project");
-const Task = require("../models/Task");
+const { Project, Task, User } = require("../models");
 const { Op } = require("sequelize");
 
 /* =============================================================
@@ -8,13 +7,13 @@ const { Op } = require("sequelize");
 
 /**
  * CREATE PROJECT
- * Assigns the currently logged-in user as the project owner (userId).
+ * Maps the owner to the 'userId' field in the 'Projects' table.
  */
 exports.createProject = async (req, res, next) => {
   try {
     const project = await Project.create({
       ...req.body,
-      userId: req.user.id 
+      userId: req.user.id // ✅ Correct camelCase field mapping
     });
     res.status(201).json(project);
   } catch (err) {
@@ -24,20 +23,19 @@ exports.createProject = async (req, res, next) => {
 
 /**
  * GET ALL PROJECTS
- * Retrieves projects owned by the user OR projects where the user 
- * is assigned to at least one task.
+ * Retrieves projects using the 'Projects' and 'Tasks' tables as seen in pgAdmin.
  */
 exports.getProjects = async (req, res, next) => {
   try {
-    // 1. Projects owned by user
+    // 1. Projects owned by user (ordering by the correct camelCase column)
     const ownedProjects = await Project.findAll({
       where: { userId: req.user.id },
-      order: [["createdAt", "DESC"]],
+      order: [["createdAt", "DESC"]], // ✅ Matches pgAdmin 'createdAt' column
     });
 
     // 2. Projects where user is a task assignee
     const assignedTasks = await Task.findAll({
-      where: { assigneeId: req.user.id }
+      where: { assigneeId: req.user.id } // ✅ Matches 'assigneeId' in Task table
     });
 
     const assignedProjectIds = [...new Set(assignedTasks.map(t => t.projectId))];
@@ -59,13 +57,14 @@ exports.getProjects = async (req, res, next) => {
 
     res.json(uniqueProjects);
   } catch (err) {
+    console.error("Dashboard Load Error:", err);
     next(err);
   }
 };
 
 /**
  * GET SINGLE PROJECT
- * Access allowed if user is the owner or assigned to a task within the project.
+ * Access logic using direct ID comparisons for RBAC stability.
  */
 exports.getProject = async (req, res, next) => {
   try {
@@ -76,11 +75,11 @@ exports.getProject = async (req, res, next) => {
     }
 
     // Allow if owner
-    if (project.userId === req.user.id) {
+    if (Number(project.userId) === Number(req.user.id)) {
       return res.json(project);
     }
 
-    // Allow if assigned to a task
+    // Allow if assigned to a task within the 'Tasks' table
     const assigned = await Task.findOne({
       where: {
         projectId: project.id,
@@ -89,7 +88,7 @@ exports.getProject = async (req, res, next) => {
     });
 
     if (!assigned) {
-      return res.status(403).json({ message: "Access denied" });
+      return res.status(403).json({ message: "Access denied: Not part of project" });
     }
 
     res.json(project);
@@ -100,7 +99,7 @@ exports.getProject = async (req, res, next) => {
 
 /**
  * UPDATE PROJECT
- * Only the owner can update project details.
+ * Validates ownership against the 'userId' column before updating.
  */
 exports.updateProject = async (req, res, next) => {
   try {
@@ -127,7 +126,6 @@ exports.updateProject = async (req, res, next) => {
 
 /**
  * DELETE PROJECT
- * Only the owner can delete the project.
  */
 exports.deleteProject = async (req, res, next) => {
   try {
@@ -152,7 +150,7 @@ exports.deleteProject = async (req, res, next) => {
 
 /**
  * ADD TEAM MEMBER
- * Only owner can add members. Prevents adding the owner or duplicate members.
+ * Updates the 'members' JSON column in the 'Projects' table.
  */
 exports.addMember = async (req, res, next) => {
   try {
@@ -162,7 +160,7 @@ exports.addMember = async (req, res, next) => {
     if (!project)
       return res.status(404).json({ message: "Project not found" });
 
-    // Security: Strict numeric check for ownership
+    // Security: Explicit ownership check
     if (Number(project.userId) !== Number(req.user.id)) {
       return res.status(403).json({
         message: "Only the project owner can add members"
@@ -171,14 +169,12 @@ exports.addMember = async (req, res, next) => {
 
     const currentMembers = project.members || [];
 
-    // Prevent adding owner to the invited list
     if (Number(userId) === Number(project.userId)) {
       return res.status(400).json({
         message: "Owner is already the project leader"
       });
     }
 
-    // Prevent duplicates
     if (currentMembers.includes(userId)) {
       return res.status(400).json({
         message: "User is already a member"
@@ -197,7 +193,6 @@ exports.addMember = async (req, res, next) => {
 
 /**
  * REMOVE TEAM MEMBER
- * Only the owner can remove members from the project list.
  */
 exports.removeMember = async (req, res, next) => {
   try {
@@ -206,14 +201,11 @@ exports.removeMember = async (req, res, next) => {
 
     if (!project) return res.status(404).json({ message: "Project not found" });
 
-    // Security check
-    if (project.userId !== req.user.id) {
-      return res.status(403).json({ message: "Only the project owner can remove members" });
+    if (Number(project.userId) !== Number(req.user.id)) {
+      return res.status(403).json({ message: "Only owner can remove members" });
     }
 
     const currentMembers = project.members || [];
-    
-    // Filter out the specific user
     const updatedMembers = currentMembers.filter(mId => String(mId) !== String(userId));
     
     project.members = updatedMembers;
@@ -227,7 +219,7 @@ exports.removeMember = async (req, res, next) => {
 
 /**
  * GET PROJECT MEMBERS
- * Returns a combined list of the project owner AND invited members.
+ * Merges 'userId' (owner) and 'members' (invited) array.
  */
 exports.getMembers = async (req, res, next) => {
   try {
@@ -235,8 +227,6 @@ exports.getMembers = async (req, res, next) => {
     if (!project) return res.status(404).json({ message: "Project not found" });
 
     const members = project.members || [];
-
-    // Combine owner ID with member IDs and ensure uniqueness
     const allMembers = [...new Set([project.userId, ...members])];
 
     res.json(allMembers);

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import axios from "axios"; 
-import { ArrowLeft, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ShieldAlert } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 import {
@@ -22,7 +22,7 @@ const COLUMNS: { key: Status; title: string }[] = [
 ];
 
 export default function KanbanBoard() {
-  const { user, permissions } = useAuth(); // ✅ Using centralized permissions
+  const { user, permissions } = useAuth();
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId: string }>();
   const numericProjectId = projectId ? Number(projectId) : null;
@@ -30,10 +30,12 @@ export default function KanbanBoard() {
   const [tasks, setTasks] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]); 
   const [doneNotification, setDoneNotification] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // ✅ Permission gating for the board
+  // ✅ Permission gating for UI elements
   const canCreateTask = permissions.includes("create_task");
   const canUpdateStatus = permissions.includes("edit_task"); 
+  const canViewUsers = permissions.includes("view_users");
 
   useEffect(() => {
     if (projectId) {
@@ -52,18 +54,28 @@ export default function KanbanBoard() {
     if (numericProjectId === null || isNaN(numericProjectId)) return;
     
     try {
-      const [allUsers, memberIdsRes] = await Promise.all([
-        getUsers(),
-        axios.get(`${import.meta.env.VITE_API_BASE_URL}/projects/${numericProjectId}/members`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` }
-        })
-      ]);
+      setLoading(true);
 
+      // ✅ 1. Fetch Project Members first (Always allowed for project participants)
+      const memberIdsRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/projects/${numericProjectId}/members`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` }
+      });
       const memberIds: number[] = memberIdsRes.data;
 
+      // ✅ 2. Fetch Users only if permissions allow, otherwise fallback to empty array
+      let allUsers: any[] = [];
+      if (canViewUsers) {
+        try {
+          allUsers = await getUsers();
+        } catch (uErr) {
+          console.warn("RBAC: User cannot view global user list.");
+        }
+      }
+
+      // ✅ 3. Sort users (if any found)
       const sortedUsers = allUsers.sort((a: any, b: any) => {
-        const aIsMember = memberIds.includes(a.id);
-        const bIsMember = memberIds.includes(b.id);
+        const aIsMember = memberIds.includes(Number(a.id));
+        const bIsMember = memberIds.includes(Number(b.id));
         if (aIsMember && !bIsMember) return -1;
         if (!aIsMember && bIsMember) return 1;
         return 0;
@@ -72,7 +84,9 @@ export default function KanbanBoard() {
       setUsers(sortedUsers);
       await loadTasks();
     } catch (err) {
-      console.error("Initial Load Error:", err);
+      console.error("Kanban Load Error:", err);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -126,6 +140,16 @@ export default function KanbanBoard() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0b1220]">
+        <div className="text-xs font-black uppercase tracking-widest animate-pulse text-indigo-500">
+          Syncing Board...
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative min-h-screen bg-slate-50 dark:bg-[#0b1220] p-6 md:p-10 transition-colors duration-300">
       
@@ -146,11 +170,18 @@ export default function KanbanBoard() {
             <ArrowLeft size={14} /> Back to Dashboard
           </Link>
           
-          {!canUpdateStatus && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-200 dark:border-indigo-800">
-              Collab Mode (View Only)
-            </div>
-          )}
+          <div className="flex items-center gap-4">
+            {!canViewUsers && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 text-amber-500 rounded-full text-[9px] font-black uppercase tracking-widest border border-amber-500/20">
+                <ShieldAlert size={12} /> Restricted View
+              </div>
+            )}
+            {!canUpdateStatus && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-200 dark:border-indigo-800">
+                Collab Mode (View Only)
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

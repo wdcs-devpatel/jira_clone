@@ -22,17 +22,18 @@ const Task = sequelize.define("Task", {
     type: DataTypes.STRING,
     defaultValue: "medium",
   },
-  // 🔥 Map to exact camelCase column in pgAdmin
+  // 🔥 Map to exact camelCase column names in pgAdmin
   projectId: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    field: 'projectId'
+    field: 'projectId' // ⚠️ Matches database column exactly
   },
-  // 🔥 Map to exact camelCase column in pgAdmin
+  // 🔥 Map to exact camelCase column names in pgAdmin
   assigneeId: {
     type: DataTypes.INTEGER,
-    field: 'assigneeId'
+    field: 'assigneeId' // ⚠️ Matches database column exactly
   },
+  // ✅ JSON format allows the subtasks/comments arrays from the frontend to be saved directly
   subtasks: {
     type: DataTypes.JSON,
     defaultValue: [],
@@ -43,7 +44,7 @@ const Task = sequelize.define("Task", {
   },
 }, {
   tableName: "Tasks", // ⚠️ Matches capitalized table name in pgAdmin
-  timestamps: true,
+  timestamps: true,   // Matches createdAt and updatedAt columns
 });
 
 module.exports = Task;

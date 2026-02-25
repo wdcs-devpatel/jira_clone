@@ -12,17 +12,33 @@ const {
   searchTasks
 } = require("../controllers/taskController");
 
-// Global authentication for all task routes
+// ✅ Ensure all routes are authenticated
 router.use(auth);
 
-/* SEARCH MUST BE BEFORE /:id */
+/* ==============================
+   SEARCH & LIST ROUTES
+============================== */
+
+// Search must be defined before specific ID routes
 router.get("/search", searchTasks);
 
-// Permissions-based guards
+// Get tasks associated with a specific project
+router.get("/project/:projectId", getTasksForProject);
+
+/* ==============================
+   ACTION ROUTES (CRUD)
+============================== */
+
+// Create: Requires 'create_task' permission
 router.post("/project/:projectId", requirePermission("create_task"), createTask);
-router.get("/project/:projectId", getTasksForProject); // Usually viewable by project members
+
+// Update: Requires 'edit_task' permission. Note use of ':id'
 router.put("/:id", requirePermission("edit_task"), updateTask);
-router.patch("/:id/status", updateTaskStatus); // Allowed for Devs to change status
+
+// Status Patch: Specific for Kanban Drag & Drop
+router.patch("/:id/status", updateTaskStatus); 
+
+// Delete: Requires 'delete_task' permission
 router.delete("/:id", requirePermission("delete_task"), deleteTask);
 
 module.exports = router;

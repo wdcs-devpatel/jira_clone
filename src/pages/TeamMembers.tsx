@@ -24,7 +24,7 @@ export default function TeamMembers() {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const numericId = Number(projectId);
-  const { user: loggedInUser } = useAuth();
+  const { user: loggedInUser, permissions } = useAuth(); // ✅ Access permissions
 
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [team, setTeam] = useState<User[]>([]);
@@ -32,6 +32,9 @@ export default function TeamMembers() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // ✅ Check if the user is allowed to even see the "Add Talent" section
+  const canViewAllUsers = permissions.includes("view_users");
 
   useEffect(() => {
     if (numericId && !isNaN(numericId)) {
@@ -45,26 +48,38 @@ export default function TeamMembers() {
     try {
       setLoading(true);
 
-      const [usersRes, membersRes, projectRes] = await Promise.all([
-        api.get(`/users`),
+      // ✅ Fetch members and project details first (should be allowed for project members)
+      const [membersRes, projectRes] = await Promise.all([
         api.get(`/projects/${numericId}/members`),
         api.get(`/projects/${numericId}`)
       ]);
 
-      const processedUsers = usersRes.data.map((u: any) => ({
-        ...u,
-        id: Number(u.id),
-        name: u.name || u.username || `User #${u.id}`,
-        position: u.position || "Developer" 
-      }));
-
-      setAllUsers(processedUsers);
-      
       const fetchedOwnerId = Number(projectRes.data.userId || projectRes.data.ownerId);
       setOwnerId(fetchedOwnerId);
-
       const memberIds: number[] = membersRes.data.map((id: any) => Number(id));
-      setTeam(processedUsers.filter((u: User) => memberIds.includes(Number(u.id))));
+
+      // ✅ Only fetch global users if permissions allow it
+      if (canViewAllUsers) {
+        try {
+          const usersRes = await api.get(`/users`);
+          const processedUsers = usersRes.data.map((u: any) => ({
+            ...u,
+            id: Number(u.id),
+            name: u.firstName || u.username || `User #${u.id}`,
+            position: u.position || "Developer" 
+          }));
+          setAllUsers(processedUsers);
+          setTeam(processedUsers.filter((u: User) => memberIds.includes(Number(u.id))));
+        } catch (err: any) {
+          if (err.response?.status === 403) {
+            console.warn("User does not have permission to view all users.");
+          }
+        }
+      } else {
+        // If can't view all users, at least show basic info for known members
+        // (You might need a specific endpoint like /projects/:id/members-details)
+        console.log("Permission 'view_users' missing: Only showing member IDs.");
+      }
 
     } catch (err: any) {
       console.error("Load Error:", err);
@@ -120,7 +135,6 @@ export default function TeamMembers() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0b1220] p-6 md:p-10 transition-colors duration-300">
-      {/* Container setup to ensure full width usage */}
       <div className="max-w-7xl mx-auto space-y-12">
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -133,16 +147,18 @@ export default function TeamMembers() {
             </h1>
           </div>
 
-          <div className="relative w-full md:w-96">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
-            <input
-              type="text"
-              placeholder="Search talent to add..."
-              value={searchTerm}
-              onChange={(e)=>setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:ring-2 ring-indigo-500/20 text-slate-900 dark:text-white transition-all"
-            />
-          </div>
+          {canViewAllUsers && (
+            <div className="relative w-full md:w-96">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
+              <input
+                type="text"
+                placeholder="Search talent to add..."
+                value={searchTerm}
+                onChange={(e)=>setSearchTerm(e.target.value)}
+                className="w-full pl-12 pr-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:ring-2 ring-indigo-500/20 text-slate-900 dark:text-white transition-all"
+              />
+            </div>
+          )}
         </div>
 
         {/* --- Current Members Section --- */}
@@ -152,7 +168,6 @@ export default function TeamMembers() {
             <h2 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Current Members</h2>
           </div>
 
-          {/* Fixed: Grid set to span across container */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {team.map(u => (
               <MemberCard
@@ -168,37 +183,38 @@ export default function TeamMembers() {
         </section>
 
         {/* --- Add Talent Section --- */}
-        <section>
-          <div className="flex items-center gap-2 mb-8">
-            <div className="w-8 h-1 bg-emerald-500 rounded-full"/>
-            <h2 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Add Talent</h2>
-          </div>
+        {canViewAllUsers && (
+          <section>
+            <div className="flex items-center gap-2 mb-8">
+              <div className="w-8 h-1 bg-emerald-500 rounded-full"/>
+              <h2 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Add Talent</h2>
+            </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {nonMembers.map(user=>(
-              <div key={user.id} className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl flex items-center justify-between transition-all hover:shadow-md">
-                <div className="flex items-center gap-3 overflow-hidden">
-                  <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${user.name}`} className="w-10 h-10 rounded-xl" alt="avatar"/>
-                  <div className="overflow-hidden">
-                    <p className="font-bold text-sm text-slate-900 dark:text-white truncate">{user.name}</p>
-                    <p className="text-[9px] text-indigo-500 font-black uppercase truncate">{user.position}</p> 
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {nonMembers.map(user=>(
+                <div key={user.id} className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl flex items-center justify-between transition-all hover:shadow-md">
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${user.name}`} className="w-10 h-10 rounded-xl" alt="avatar"/>
+                    <div className="overflow-hidden">
+                      <p className="font-bold text-sm text-slate-900 dark:text-white truncate">{user.name}</p>
+                      <p className="text-[9px] text-indigo-500 font-black uppercase truncate">{user.position}</p> 
+                    </div>
                   </div>
+                  
+                  {isOwner && (
+                    <button 
+                      onClick={()=>addMember(user.id)} 
+                      className="p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white rounded-xl transition-all shadow-sm flex-shrink-0"
+                    >
+                      <UserPlus size={18}/>
+                    </button>
+                  )}
                 </div>
-                
-                {isOwner && (
-                  <button 
-                    onClick={()=>addMember(user.id)} 
-                    className="p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white rounded-xl transition-all shadow-sm flex-shrink-0"
-                  >
-                    <UserPlus size={18}/>
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
+              ))}
+            </div>
+          </section>
+        )}
 
-        {/* Modal remains for individual user details popups */}
         <Modal isOpen={!!selectedUser} onClose={()=>setSelectedUser(null)}>
           {selectedUser && <UserDetails user={selectedUser}/>}
         </Modal>
@@ -208,7 +224,6 @@ export default function TeamMembers() {
 }
 
 /* MEMBER CARD */
-
 function MemberCard({user, onDetails, onRemove, isLeader, canManage}: any) {
   return(
     <div onClick={onDetails} className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 cursor-pointer transition-all hover:shadow-xl hover:-translate-y-1 relative">
@@ -236,7 +251,7 @@ function MemberCard({user, onDetails, onRemove, isLeader, canManage}: any) {
         <div className={`text-[9px] font-black px-4 py-1.5 rounded-full flex items-center gap-1.5
           ${isLeader ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400" : "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400"}`}>
           <Shield size={12}/>
-          {isLeader ? "YOU" : "MEMBER"}
+          {isLeader ? "OWNER" : "MEMBER"}
         </div>
         <div className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5 hover:text-indigo-500 transition-colors uppercase tracking-widest">
           View Details <ExternalLink size={12}/>
@@ -247,7 +262,6 @@ function MemberCard({user, onDetails, onRemove, isLeader, canManage}: any) {
 }
 
 /* USER DETAILS MODAL */
-
 function UserDetails({user}: any) {
   return(
     <div className="p-4">

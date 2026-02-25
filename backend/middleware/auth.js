@@ -10,27 +10,29 @@ module.exports = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, CONFIG.JWT_SECRET);
     
+    // ✅ Use a lean fetch. Ensure models are mapped to 'Users' and 'Roles' in pgAdmin
     const user = await User.findByPk(decoded.id, {
       include: {
         model: Role,
         include: {
           model: Permission,
-          through: { attributes: [] } // Clean junction table data
+          through: { attributes: [] } 
         }
       }
     });
 
     if (!user) return res.status(401).json({ message: "User no longer exists" });
 
-    // 🔥 Flatten permissions into a simple array of strings for easy checking
+    // ✅ Attach data for downstream permission/role checks
     req.user = {
       id: user.id,
-      role: user.Role?.name,
-      permissions: user.Role?.Permissions?.map(p => p.name) || []
+      role: user.Role?.name, // Matches 'Admin', 'Dev', etc. in pgAdmin Roles table
+      permissions: user.Role?.Permissions?.map(p => p.name) || [] // e.g., ["view_users"]
     };
 
     next();
   } catch (err) {
+    console.error("Auth Middleware Error:", err);
     return res.status(401).json({ message: "Token expired or invalid" });
   }
 };

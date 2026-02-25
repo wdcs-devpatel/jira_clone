@@ -1,6 +1,6 @@
 import { useState, useEffect, FormEvent } from "react";
 import { PRIORITY_LIST } from "../utils/constants";
-import { UserCheck, ChevronDown, Lock } from "lucide-react";
+import { UserCheck, ChevronDown, Lock, AlertCircle } from "lucide-react";
 import { Project } from "../services/projectService";
 import { getUsers } from "../services/userService"; 
 import { User as UserInterface, TaskPriority } from "../interfaces"; 
@@ -23,13 +23,21 @@ export default function CreateProjectModal({
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [teamLeader, setTeamLeader] = useState<string>(""); 
   const [managers, setManagers] = useState<UserInterface[]>([]); 
+  const [fetchError, setFetchError] = useState<boolean>(false);
 
-  // ✅ Permission-based logic: uses permissions array instead of position string
+  // ✅ RBAC Gate: Uses the flattened permissions array from AuthContext
   const permissions = user?.permissions || [];
   const canManage = permissions.includes("create_project");
+  const canViewUsers = permissions.includes("view_users");
 
   useEffect(() => {
     async function loadManagers() {
+      // ✅ Only attempt fetch if the user has the required 'view_users' permission
+      if (!canViewUsers) {
+        setFetchError(true);
+        return;
+      }
+
       try {
         const allUsers = await getUsers();
         // Show users whose role is TL, PM, or Admin for responsibility assignment
@@ -37,12 +45,14 @@ export default function CreateProjectModal({
           ["PM", "TL", "Admin"].includes(u.Role?.name)
         );
         setManagers(filtered.length > 0 ? filtered : allUsers);
-      } catch (err) {
+        setFetchError(false);
+      } catch (err: any) {
         console.error("Failed to load managers", err);
+        setFetchError(true);
       }
     }
     loadManagers();
-  }, []);
+  }, [canViewUsers]);
 
   useEffect(() => {
     if (editingProject) {
@@ -54,7 +64,8 @@ export default function CreateProjectModal({
       setName("");
       setDescription("");
       setPriority("medium");
-      setTeamLeader(canManage ? user?.username || "" : "");
+      // Fallback to current user if management list is blocked
+      setTeamLeader(user?.username || "");
     }
   }, [editingProject, user, canManage]);
 
@@ -62,8 +73,7 @@ export default function CreateProjectModal({
     e.preventDefault();
     
     if (!canManage) {
-      alert("Unauthorized: You do not have permission to manage projects.");
-      return;
+      return; // UI is gated, but double check for safety
     }
 
     onSaved({ 
@@ -136,15 +146,26 @@ export default function CreateProjectModal({
                 onChange={(e) => setTeamLeader(e.target.value)}
                 className="w-full pl-12 pr-10 py-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 outline-none text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer"
               >
-                <option value="" disabled>Select a Lead</option>
-                {managers.map((m) => (
-                  <option key={m.id} value={m.username}>
-                    {m.firstName} {m.lastName} (@{m.username})
-                  </option>
-                ))}
+                {!fetchError ? (
+                  <>
+                    <option value="" disabled>Select a Lead</option>
+                    {managers.map((m) => (
+                      <option key={m.id} value={m.username}>
+                        {m.firstName} {m.lastName} (@{m.username})
+                      </option>
+                    ))}
+                  </>
+                ) : (
+                   <option value={user?.username}>{user?.username} (Self)</option>
+                )}
               </select>
               <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
             </div>
+            {fetchError && (
+              <p className="mt-2 text-[9px] font-bold text-amber-500 flex items-center gap-1 uppercase tracking-tighter">
+                <AlertCircle size={10} /> Management list restricted. Assigned to self.
+              </p>
+            )}
           </div>
 
           {/* Description */}
