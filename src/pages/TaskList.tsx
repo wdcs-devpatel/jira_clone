@@ -1,15 +1,17 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom"; 
 import { getAllTasks, searchTasks } from "../services/taskService";
 import { getProjects } from "../services/projectService";
 import { PRIORITIES } from "../utils/constants";
+import { useAuth } from "../context/AuthContext"; // ✅ Import Auth
 import {
   CheckCircle2,
   Circle,
   Clock,
   ClipboardList,
   Search,
-  Filter
+  Filter,
+  Lock
 } from "lucide-react";
 
 type Status = "todo" | "in-progress" | "done";
@@ -25,12 +27,17 @@ interface Task {
 
 export default function TaskList() {
   const navigate = useNavigate(); 
+  const { permissions } = useAuth(); // ✅ Extract permissions
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [projectMap, setProjectMap] = useState<Record<string, string>>({});
   
   const isInitialMount = useRef(true);
+
+  // ✅ Permission-based logic
+  // You might want to restrict editing or viewing details based on 'edit_task'
+  const canEditTask = permissions.includes("edit_task");
 
   /* ---------------- INITIAL LOAD ---------------- */
   useEffect(() => {
@@ -118,7 +125,6 @@ export default function TaskList() {
     }
   }
 
-  /* ---------------- UI ---------------- */
   return (
     <div className="p-6 md:p-10 min-h-screen bg-slate-50 dark:bg-[#0b1220]">
       <div className="max-w-6xl mx-auto space-y-8">
@@ -134,7 +140,7 @@ export default function TaskList() {
             </p>
           </div>
 
-          {/* Search */}
+          {/* Search and Filters */}
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16}/>
@@ -180,12 +186,21 @@ export default function TaskList() {
                   return (
                     <div
                       key={task.id}
-                    
-                      onClick={() => navigate(`/kanban/${task.projectId}/task/${task.id}`)}
-                      className="grid grid-cols-12 px-8 py-6 cursor-pointer hover:bg-indigo-50/30 dark:hover:bg-indigo-500/5 transition-all group"
+                      onClick={() => {
+                        // ✅ Gated Navigation
+                        if (canEditTask) {
+                          navigate(`/kanban/${task.projectId}/task/${task.id}`);
+                        }
+                      }}
+                      className={`grid grid-cols-12 px-8 py-6 transition-all group ${
+                        canEditTask 
+                          ? "cursor-pointer hover:bg-indigo-50/30 dark:hover:bg-indigo-500/5" 
+                          : "cursor-default opacity-80"
+                      }`}
                     >
-                      <div className="col-span-6 font-bold text-slate-700 dark:text-slate-200 group-hover:text-indigo-600 transition-colors">
+                      <div className="col-span-6 font-bold text-slate-700 dark:text-slate-200 group-hover:text-indigo-600 transition-colors flex items-center gap-2">
                         {task.title}
+                        {!canEditTask && <Lock size={12} className="text-slate-400" />}
                       </div>
 
                       <div className="col-span-2 flex justify-center">
@@ -225,5 +240,3 @@ export default function TaskList() {
     </div>
   );
 }
-
-  

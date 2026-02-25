@@ -1,47 +1,57 @@
-const User = require("../models/User");
+const { User, Role } = require("../models");
 
+/* =====================================================
+   GET ALL USERS (Admin Only)
+===================================================== */
 exports.getUsers = async (req, res, next) => {
   try {
     const users = await User.findAll({
-      attributes: ["id", "username", "email", "firstName", "lastName", "phone", "position"],
+      include: {
+        model: Role,
+        attributes: ["id", "name"]
+      },
+      attributes: ["id", "username", "email", "firstName", "lastName", "phone"]
     });
 
-    const formattedUsers = users.map(user => {
-      const u = user.toJSON();
-      u.name = (u.firstName && u.lastName) 
-        ? `${u.firstName} ${u.lastName}` 
-        : u.username;
-      return u;
-    });
-
-    res.json(formattedUsers);
+    res.json(users);
   } catch (err) {
     next(err);
   }
 };
 
+/* =====================================================
+   GET PROFILE (Authenticated User)
+===================================================== */
 exports.getProfile = async (req, res, next) => {
   try {
     const user = await User.findByPk(req.user.id, {
-      attributes: ["id", "username", "email", "firstName", "lastName", "phone", "position"]
+      include: {
+        model: Role,
+        attributes: ["id", "name"]
+      },
+      attributes: ["id", "username", "email", "firstName", "lastName", "phone"]
     });
-    if (!user) return res.status(404).json({ message: "User not found" });
-    
-    const u = user.toJSON();
-    u.name = (u.firstName && u.lastName) ? `${u.firstName} ${u.lastName}` : u.username;
-    
-    res.json(u);
+
+    if (!user)
+      return res.status(404).json({ message: "User not found" });
+
+    res.json(user);
   } catch (err) {
     next(err);
   }
 };
 
+/* =====================================================
+   UPDATE PROFILE (Authenticated User)
+===================================================== */
 exports.updateProfile = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { username, email, firstName, lastName, phone, position } = req.body;
+    const { username, email, firstName, lastName, phone } = req.body;
+
     const user = await User.findByPk(userId);
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user)
+      return res.status(404).json({ message: "User not found" });
 
     await user.update({
       username: username ?? user.username,
@@ -49,16 +59,32 @@ exports.updateProfile = async (req, res, next) => {
       firstName: firstName ?? user.firstName,
       lastName: lastName ?? user.lastName,
       phone: phone ?? user.phone,
-      position: position ?? user.position,
     });
 
-    const responseData = user.toJSON();
-    delete responseData.password;
-    responseData.name = (responseData.firstName && responseData.lastName) 
-      ? `${responseData.firstName} ${responseData.lastName}` 
-      : responseData.username;
+    res.json({ message: "Profile updated successfully" });
 
-    res.json(responseData);
+  } catch (err) {
+    next(err);
+  }
+};
+
+/* =====================================================
+   UPDATE USER ROLE (Admin Only)
+===================================================== */
+exports.updateUserRole = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const { roleId } = req.body;
+
+    const user = await User.findByPk(userId);
+    if (!user)
+      return res.status(404).json({ message: "User not found" });
+
+    user.role_id = roleId;
+    await user.save();
+
+    res.json({ message: "User role updated successfully" });
+
   } catch (err) {
     next(err);
   }

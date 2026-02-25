@@ -1,5 +1,10 @@
 export type UserId = string | number;
 
+export interface Role {
+  id: number;
+  name: string; // e.g., "Admin", "Project Manager", "Team Leader"
+}
+
 export interface User {
   id: UserId;
   username: string;
@@ -9,7 +14,12 @@ export interface User {
   avatar?: string;
   image?: string;
   phone?: string; 
-  position?: string; // Added position
+  
+  // 🔥 RBAC Fields
+  role_id: number;
+  Role?: Role;
+  permissions: string[]; // e.g., ["create_project", "edit_task"]
+
   name?: string;     // Computed field for UI display
   [key: string]: any; 
 }

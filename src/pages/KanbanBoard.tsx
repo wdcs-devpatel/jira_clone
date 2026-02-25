@@ -22,7 +22,7 @@ const COLUMNS: { key: Status; title: string }[] = [
 ];
 
 export default function KanbanBoard() {
-  const { user } = useAuth();
+  const { user, permissions } = useAuth(); // ✅ Using centralized permissions
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId: string }>();
   const numericProjectId = projectId ? Number(projectId) : null;
@@ -31,13 +31,9 @@ export default function KanbanBoard() {
   const [users, setUsers] = useState<any[]>([]); 
   const [doneNotification, setDoneNotification] = useState<string | null>(null);
 
-  const userPosition = user?.position?.toLowerCase().trim() || "";
-  
-  const canManageTasks = [
-    "project manager", 
-    "team leader",  
-    "qa tester"
-  ].includes(userPosition);
+  // ✅ Permission gating for the board
+  const canCreateTask = permissions.includes("create_task");
+  const canUpdateStatus = permissions.includes("edit_task"); 
 
   useEffect(() => {
     if (projectId) {
@@ -91,7 +87,7 @@ export default function KanbanBoard() {
   }
   
   const handleDragStart = (e: React.DragEvent, taskId: TaskId) => {
-    if (!canManageTasks) {
+    if (!canUpdateStatus) {
       e.preventDefault();
       return;
     }
@@ -99,12 +95,12 @@ export default function KanbanBoard() {
   };
 
   const onDragOver = (e: React.DragEvent) => {
-    if (canManageTasks) e.preventDefault();
+    if (canUpdateStatus) e.preventDefault();
   };
 
   const onDrop = async (e: React.DragEvent, newStatus: Status) => {
     e.preventDefault();
-    if (!canManageTasks) return;
+    if (!canUpdateStatus) return;
 
     const taskId = e.dataTransfer.getData("taskId");
     if (taskId) {
@@ -122,20 +118,11 @@ export default function KanbanBoard() {
     }
   };
 
-  /**
-   * REFACTORED: Instead of opening a modal, we navigate to the task details page.
-   */
   const handleNavigateToTask = (task: any = null, defaultStatus: Status = "todo") => {
     if (task) {
-      // Navigates to /kanban/:projectId/task/:taskId
       navigate(`/kanban/${projectId}/task/${task.id}`);
     } else {
-      // Optional: Logic for creating a new task page
-      // navigate(`/kanban/${projectId}/task/create?status=${defaultStatus}`);
-      
-      // If you still want a modal for "Creation Only", keep showModal state, 
-      // otherwise, redirect to a creation page.
-      alert("Redirect to Create Task Page or use a simple Create Modal");
+      navigate(`/kanban/${projectId}/task/create?status=${defaultStatus}`);
     }
   };
 
@@ -158,7 +145,8 @@ export default function KanbanBoard() {
            <Link to="/dashboard" className="text-slate-500 hover:text-indigo-500 flex items-center gap-2 text-xs font-bold uppercase tracking-widest transition-colors">
             <ArrowLeft size={14} /> Back to Dashboard
           </Link>
-          {!canManageTasks && (
+          
+          {!canUpdateStatus && (
             <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-200 dark:border-indigo-800">
               Collab Mode (View Only)
             </div>
@@ -174,8 +162,8 @@ export default function KanbanBoard() {
                 tasks={tasks.filter((t) => t.status === col.key)}
                 users={users} 
                 onEdit={handleNavigateToTask} 
-                onDelete={() => {}} // Handle deletion inside the Details page
-                onAddClick={canManageTasks ? () => handleNavigateToTask(null, col.key) : () => {}}
+                onDelete={() => {}} 
+                onAddClick={canCreateTask ? () => handleNavigateToTask(null, col.key) : () => {}}
                 onDragStart={handleDragStart}
               />
             </div>

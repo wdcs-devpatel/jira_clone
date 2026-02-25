@@ -2,35 +2,49 @@ import { api } from "./authService";
 import { User } from "../interfaces";
 
 /**
- * GET ALL USERS
- * Uses the interceptor to automatically attach tokens and handle base URL.
+ * GET ALL USERS (Admin Only)
+ * Used to populate assignees in Kanban columns and Task details.
  */
 export async function getUsers(): Promise<User[]> {
   try {
-    const res = await api.get("/users");
-
-    // Map results to ensure consistent data types and name formatting
+    const res = await api.get("/users"); // Calls the Admin-protected GET /api/users
     return res.data.map((u: any) => ({
       ...u,
-      id: Number(u.id), // Ensure ID is a number
-      name: u.firstName && u.lastName 
-        ? `${u.firstName} ${u.lastName}` 
+      id: Number(u.id),
+      // Construct a full name or fallback to username
+      name: u.firstName || u.lastName 
+        ? `${u.firstName || ""} ${u.lastName || ""}`.trim() 
         : u.username
     }));
-  } catch (error) {
-    console.error("Error fetching users:", error);
+  } catch (error: any) {
+    // If you see 403 here, your user lacks the "view_users" permission
+    console.error("Error fetching users: Check your RBAC permissions.", error);
     return [];
   }
 }
 
-
-export async function updateProfile(userId: string | number, profileData: Partial<User>) {
+/**
+ * UPDATE USER ROLE (Admin Only)
+ * Used in the Admin Panel to change a user's role assignment.
+ */
+export async function updateUserRole(userId: number | string, roleId: number) {
   try {
-    // We send profileData which now includes the 'position' field from the form
+    const res = await api.put(`/users/${userId}/role`, { roleId });
+    return res.data;
+  } catch (error: any) {
+    throw error;
+  }
+}
+
+/**
+ * UPDATE OWN PROFILE
+ * Allows the current logged-in user to update their own details.
+ */
+export async function updateProfile(profileData: Partial<User>) {
+  try {
     const res = await api.put("/users/profile", profileData);
     return res.data;
   } catch (error: any) {
-    // Re-throw so the frontend Toast can capture the error message
     throw error;
   }
 }

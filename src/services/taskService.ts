@@ -12,7 +12,7 @@ export async function searchTasks(query: string) {
   return res.data;
 }
 
-/* GET TASKS */
+/* GET TASKS FOR A PROJECT */
 export async function getAllTasks(projectId: number) {
   const res = await api.get(`${BASE_URL}/project/${projectId}`);
   return res.data;
@@ -30,7 +30,7 @@ export async function updateTask(taskId: string | number, updates: any) {
   return res.data;
 }
 
-/* UPDATE STATUS */
+/* UPDATE STATUS (Drag and Drop) */
 export async function updateTaskStatus(taskId: string | number, status: Status) {
   const res = await api.patch(`${BASE_URL}/${taskId}/status`, { status });
   return res.data;

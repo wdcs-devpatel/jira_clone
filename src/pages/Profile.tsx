@@ -14,11 +14,10 @@ export default function Profile() {
     lastName: "",
     username: "",
     email: "",
-    phone: "",
-    position: ""
+    phone: ""
   });
 
-  // Fetch profile on mount
+  // Fetch fresh profile data on mount to ensure RBAC sync
   useEffect(() => {
     async function fetchProfile() {
       try {
@@ -39,17 +38,15 @@ export default function Profile() {
         lastName: user.lastName || "",
         username: user.username || "",
         email: user.email || "",
-        phone: user.phone || "",
-        position: user.position || ""
+        phone: user.phone || ""
       });
     }
   }, [user]);
 
   const handleSave = async () => {
     try {
-      if (!user?.id) throw new Error("User session not found.");
-      
-      const result = await updateProfile(user.id, formData);
+      // updateProfile now only takes profileData (token handles the ID)
+      const result = await updateProfile(formData);
       updateUser({ ...user, ...result });
       toast.success("Profile updated successfully!");
       setIsEditing(false);
@@ -65,8 +62,7 @@ export default function Profile() {
         lastName: user.lastName || "",
         username: user.username || "",
         email: user.email || "",
-        phone: user.phone || "",
-        position: user.position || ""
+        phone: user.phone || ""
       });
     }
     setIsEditing(false);
@@ -137,32 +133,22 @@ export default function Profile() {
               </div>
             </div>
 
-            {/* Position Row */}
+            {/* Role Row (Read-Only) */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center border-t border-slate-100 dark:border-slate-800 pt-8">
               <div className="flex items-center gap-2 text-slate-400">
                 <Briefcase size={16} />
-                <label className="text-xs font-black uppercase tracking-[0.2em]">Position</label>
+                <label className="text-xs font-black uppercase tracking-[0.2em]">Assigned Role</label>
               </div>
               <div className="md:col-span-2">
-                {isEditing ? (
-                  <select
-                    value={formData.position}
-                    onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                    className="w-full p-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 transition-all font-medium appearance-none"
-                  >
-                    <option value="">Select Position</option>
-                    <option>Project Manager</option>
-                    <option>Team Leader</option>
-                    <option>Senior Developer</option>
-                    <option>Developer</option>
-                    <option>UI/UX Designer</option>
-                    <option>QA Tester</option>
-                    <option>DevOps Engineer</option>
-                    <option>Intern</option>
-                  </select>
-                ) : (
-                  <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{user?.position || "Not Assigned"}</p>
-                )}
+                {/* Users cannot edit their own Role/Position in profile for security.
+                   We display the Name from the Role object.
+                */}
+                <p className="text-lg font-bold text-slate-800 dark:text-slate-100">
+                  {user?.Role?.name || "Member"}
+                </p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                  System Level Access
+                </p>
               </div>
             </div>
 

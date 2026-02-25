@@ -1,5 +1,17 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
-import { User, AuthContextType } from "../interfaces";
+import { User } from "../interfaces";
+
+interface AuthContextType {
+  token: string | null;
+  user: User | null;
+  permissions: string[]; // Added for direct access in components
+  login: (
+    tokens: { accessToken: string; refreshToken: string },
+    userData: User
+  ) => void;
+  logout: () => void;
+  updateUser: (updated: Partial<User>) => void;
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -10,29 +22,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const [user, setUser] = useState<User | null>(() => {
     const u = localStorage.getItem("currentUser");
-    try {
-      return u ? JSON.parse(u) : null;
-    } catch (e) {
-      return null;
-    }
+    return u ? JSON.parse(u) : null;
   });
 
-  // Keep state in sync across tabs or after profile updates
+  // Derived state for easier permission checks throughout the app
+  const [permissions, setPermissions] = useState<string[]>(user?.permissions || []);
+
   useEffect(() => {
     const syncAuth = () => {
       setToken(localStorage.getItem("accessToken"));
       const u = localStorage.getItem("currentUser");
-      try {
-        setUser(u ? JSON.parse(u) : null);
-      } catch (e) {
-        setUser(null);
-      }
+      const parsedUser = u ? JSON.parse(u) : null;
+      setUser(parsedUser);
+      setPermissions(parsedUser?.permissions || []);
     };
 
     window.addEventListener("storage", syncAuth);
     return () => window.removeEventListener("storage", syncAuth);
   }, []);
 
+  /**
+   * LOGIN
+   * Properly maps the backend response into a safe RBAC-compliant user object.
+   */
   const login = (
     tokens: { accessToken: string; refreshToken: string },
     userData: User
@@ -40,46 +52,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("accessToken", tokens.accessToken);
     localStorage.setItem("refreshToken", tokens.refreshToken);
 
-    // Explicitly map all fields including position to ensure dashboard permissions work
+    // 🔥 Explicitly mapping the new RBAC structure
     const safeUser: User = {
       id: userData.id,
       username: userData.username,
       email: userData.email,
-      position: userData.position, // Critical for role-based button visibility
       firstName: userData.firstName,
       lastName: userData.lastName,
-      phone: userData.phone
+      phone: userData.phone,
+      role_id: userData.role_id, // Links to the Role ID
+      Role: userData.Role,       // Structured Role object { id, name }
+      permissions: userData.permissions || [] // Array of capability strings
     };
 
     localStorage.setItem("currentUser", JSON.stringify(safeUser));
     setToken(tokens.accessToken);
     setUser(safeUser);
+    setPermissions(safeUser.permissions);
 
-    // FIX: Manually trigger storage event so Dashboard re-calculates permissions immediately
+    // Notify other components or tabs of the auth change
     window.dispatchEvent(new Event("storage"));
   };
 
+  /**
+   * LOGOUT
+   * Clears all session data and redirects to the landing page.
+   */
   const logout = () => {
     localStorage.clear();
     setToken(null);
     setUser(null);
+    setPermissions([]);
     window.location.href = "/";
   };
 
+  /**
+   * UPDATE USER
+   * Merges profile updates or permission changes into the current session.
+   */
   const updateUser = (updated: Partial<User>) => {
     if (!user) return;
-    
-    // Merge updates and save to local storage
+
     const newUser = { ...user, ...updated };
     localStorage.setItem("currentUser", JSON.stringify(newUser));
     setUser(newUser);
-
-    // Notify other parts of the app (like Dashboard) that storage has changed
-    window.dispatchEvent(new Event("storage"));
+    
+    // Ensure permission state stays in sync if permissions were part of the update
+    if (updated.permissions) {
+      setPermissions(updated.permissions);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ token, user, login, logout, updateUser }}>
+    <AuthContext.Provider value={{ token, user, permissions, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

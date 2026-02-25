@@ -7,6 +7,7 @@ import {
   Sun,
   Moon,
   UserCircle,
+  ShieldCheck, // Added icon for Admin
 } from "lucide-react";
 
 import jiraLogo from "../assets/jira-logo.png";
@@ -16,17 +17,18 @@ import { useTheme } from "../context/ThemeContext";
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth(); // Access user from AuthContext
   const { theme, toggleTheme } = useTheme();
 
   const [isOpen, setIsOpen] = useState(false);
   
-  // State to track the active project ID for the dynamic Team link
   const [activeProjectId, setActiveProjectId] = useState<string | null>(
     localStorage.getItem("currentProjectId")
   );
 
-  // Sync state whenever the URL changes or a project is selected
+  // Check for Admin status - updated to match your new RBAC structure
+  const isAdmin = user?.Role?.name === "Admin" || user?.role === "Admin";
+
   useEffect(() => {
     const storedId = localStorage.getItem("currentProjectId");
     setActiveProjectId(storedId);
@@ -34,7 +36,7 @@ export default function Navbar() {
 
   const handleLogout = () => {
     logout();
-    localStorage.clear(); // Ensure all keys including currentProjectId are wiped
+    localStorage.clear(); 
     navigate("/");
   };
 
@@ -69,14 +71,21 @@ export default function Navbar() {
             Tasks
           </NavLink>
           
-          {/* --- QUICK FIX APPLIED HERE --- */}
-          {/* Defaults to project ID 1 if activeProjectId is not yet set in storage */}
           <NavLink 
             to={`/team/${activeProjectId || 1}`} 
             className={getLinkClass}
           >
             Team
           </NavLink>
+
+          {/* 🔥 NEW: Admin Link - Only visible to Admins */}
+          {isAdmin && (
+            <NavLink to="/admin" className={getLinkClass}>
+              <span className="flex items-center gap-1">
+                <ShieldCheck size={14} /> Admin
+              </span>
+            </NavLink>
+          )}
         </div>
 
         <div className="flex items-center gap-5 border-l border-white/20 dark:border-slate-800 pl-8">
@@ -106,7 +115,9 @@ export default function Navbar() {
             {isOpen && (
               <div className="absolute right-0 mt-4 w-56 bg-white dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200 dark:border-white/5 overflow-hidden">
                 <div className="px-4 py-3 border-b border-slate-100 dark:border-white/5 mb-1">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Account</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    {user?.username} ({user?.Role?.name || 'User'})
+                  </p>
                 </div>
                 <button
                   onClick={() => { setIsOpen(false); navigate("/profile"); }}

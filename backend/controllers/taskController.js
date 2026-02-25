@@ -9,22 +9,21 @@ exports.searchTasks = async (req, res, next) => {
     const q = req.query.q || "";
 
     // Security check: Only return tasks the user has access to
-    // (They own the project OR they are the assignee)
     const tasks = await Task.findAll({
       where: {
         title: {
-          [Op.iLike]: `%${q}%` // Case-insensitive search for Postgres
+          [Op.iLike]: `%${q}%` // Case-insensitive for Postgres
         },
         [Op.or]: [
-          { assigneeId: req.user.id },
-          { '$Project.userId$': req.user.id }
+          { assigneeId: req.user.id }, // ✅ Matches Task model field
+          { '$Project.userId$': req.user.id } // ✅ Matches Project model field
         ]
       },
       include: [{
         model: Project,
         attributes: ['userId', 'name']
       }],
-      order: [["createdAt", "DESC"]],
+      order: [["createdAt", "DESC"]], // ✅ Correct camelCase for your DB
     });
 
     res.json(tasks);
@@ -50,8 +49,8 @@ exports.createTask = async (req, res, next) => {
     if (project.userId !== req.user.id) {
       const assigned = await Task.findOne({
         where: {
-          projectId,
-          assigneeId: req.user.id
+          projectId, // ✅ Matches Task model field
+          assigneeId: req.user.id // ✅ Matches Task model field
         }
       });
 
@@ -62,7 +61,7 @@ exports.createTask = async (req, res, next) => {
 
     const task = await Task.create({
       ...req.body,
-      projectId: projectId,
+      projectId: projectId, // ✅ Explicitly set to match model field
     });
     res.status(201).json(task);
   } catch (err) {
@@ -85,7 +84,7 @@ exports.getTasksForProject = async (req, res, next) => {
     if (project.userId !== req.user.id) {
       const assigned = await Task.findOne({
         where: {
-          projectId,
+          projectId: projectId,
           assigneeId: req.user.id
         }
       });
@@ -97,7 +96,7 @@ exports.getTasksForProject = async (req, res, next) => {
 
     const tasks = await Task.findAll({
       where: { projectId: projectId },
-      order: [["createdAt", "DESC"]],
+      order: [["createdAt", "DESC"]], // ✅ Matches pgAdmin camelCase
     });
     res.json(tasks);
   } catch (err) {

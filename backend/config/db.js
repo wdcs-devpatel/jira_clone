@@ -47,7 +47,14 @@ const sequelize = new Sequelize(
   {
     host: CONFIG.DB.host,
     dialect: CONFIG.DB.dialect,
-    logging: false
+    logging: false,
+    define: {
+      // ❌ REMOVED: underscored: true
+      // ✅ FIX: Set underscored to false to match 'createdAt' and 'updatedAt' in pgAdmin
+      underscored: false, 
+      timestamps: true,   
+      freezeTableName: true 
+    }
   }
 );
 

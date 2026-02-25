@@ -7,6 +7,7 @@ import { api } from "./services/authService";
 function App() {
   const [showPopup, setShowPopup] = useState(false);
 
+  // Hook triggers when the session is nearing expiry
   useSessionTimer(() => setShowPopup(true));
 
   const stayLoggedIn = async () => {
@@ -32,7 +33,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors duration-300">
       <AppRoutes />
 
       {showPopup && (

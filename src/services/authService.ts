@@ -1,19 +1,29 @@
 import axios from "axios";
 
-const API_URL = `${import.meta.env.VITE_API_BASE_URL}/auth`;
+const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const AUTH_URL = `${BASE_URL}/auth`;
 
+/* ==============================
+   AXIOS INSTANCE
+============================== */
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+  baseURL: BASE_URL,
 });
 
-/* Attach access token automatically */
+/* ==============================
+   REQUEST INTERCEPTOR
+============================== */
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("accessToken");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
 
-/* AUTO REFRESH TOKEN */
+/* ==============================
+   AUTO REFRESH TOKEN
+============================== */
 api.interceptors.response.use(
   (res) => res,
   async (err) => {
@@ -26,7 +36,7 @@ api.interceptors.response.use(
         const refreshToken = localStorage.getItem("refreshToken");
         if (!refreshToken) throw new Error("No refresh token");
 
-        const refreshRes = await axios.post(`${API_URL}/refresh`, {
+        const refreshRes = await axios.post(`${AUTH_URL}/refresh`, {
           refreshToken
         });
 
@@ -36,7 +46,6 @@ api.interceptors.response.use(
         localStorage.setItem("refreshToken", newRefresh);
 
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-
         return api.request(originalRequest);
 
       } catch (refreshError) {
@@ -50,30 +59,36 @@ api.interceptors.response.use(
   }
 );
 
-/* LOGIN */
+/* ==============================
+   LOGIN
+============================== */
 export const loginUser = async (identifier: string, password: string) => {
-  const res = await axios.post(`${API_URL}/login`, {
+  const res = await axios.post(`${AUTH_URL}/login`, {
     identifier,
     password
   });
+
   return res.data;
 };
 
-/* REGISTER */
+/* ==============================
+   REGISTER (NO POSITION)
+============================== */
 export const registerUser = async (userData: {
   firstName: string;
   lastName: string;
   username: string;
   email: string;
   phone: string;
-  position: string; 
   password: string;
 }) => {
-  const res = await axios.post(`${API_URL}/register`, userData);
+  const res = await axios.post(`${AUTH_URL}/register`, userData);
   return res.data;
 };
 
-/* LOGOUT */
+/* ==============================
+   LOGOUT
+============================== */
 export const logoutUser = () => {
   localStorage.clear();
 };

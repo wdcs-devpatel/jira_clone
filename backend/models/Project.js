@@ -7,37 +7,33 @@ const Project = sequelize.define("Project", {
     autoIncrement: true,
     primaryKey: true,
   },
-
   name: {
     type: DataTypes.STRING,
     allowNull: false,
   },
-
   description: {
     type: DataTypes.TEXT,
   },
-
   priority: {
     type: DataTypes.STRING,
     defaultValue: "medium",
   },
-
   teamLeader: {
     type: DataTypes.STRING,
   },
-
+  // 🔥 Map to exact camelCase column in pgAdmin
   userId: {
     type: DataTypes.INTEGER,
     allowNull: false,
+    field: 'userId'
   },
-
   members: {
     type: DataTypes.JSON,
     defaultValue: [],
   },
-
 }, {
-  timestamps: true,
+  tableName: "Projects", // ⚠️ Matches capitalized table name in pgAdmin
+  timestamps: true,      // Uses createdAt and updatedAt
 });
 
 module.exports = Project;

@@ -24,28 +24,19 @@ export default function CreateProjectModal({
   const [teamLeader, setTeamLeader] = useState<string>(""); 
   const [managers, setManagers] = useState<UserInterface[]>([]); 
 
-
-  const userPosition = user?.position?.toLowerCase().trim() || "";
-  const canManage = [
-    "project manager", 
-    "team leader", 
-    "qa", 
-    "qa tester"
-  ].includes(userPosition);
+  // ✅ Permission-based logic: uses permissions array instead of position string
+  const permissions = user?.permissions || [];
+  const canManage = permissions.includes("create_project");
 
   useEffect(() => {
     async function loadManagers() {
       try {
         const allUsers = await getUsers();
-        const filtered = allUsers.filter((u) => {
-          const pos = u.position?.toLowerCase().trim() || "";
-          return [
-            "project manager", 
-            "team leader",  
-            "qa tester"
-          ].includes(pos);
-        });
-        setManagers(filtered);
+        // Show users whose role is TL, PM, or Admin for responsibility assignment
+        const filtered = allUsers.filter((u: any) =>
+          ["PM", "TL", "Admin"].includes(u.Role?.name)
+        );
+        setManagers(filtered.length > 0 ? filtered : allUsers);
       } catch (err) {
         console.error("Failed to load managers", err);
       }
@@ -70,8 +61,8 @@ export default function CreateProjectModal({
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     
-      if (!canManage) {
-      alert("Unauthorized: Only Project Managers, Team Leaders, or QA can manage projects.");
+    if (!canManage) {
+      alert("Unauthorized: You do not have permission to manage projects.");
       return;
     }
 
@@ -85,6 +76,7 @@ export default function CreateProjectModal({
     });
   }
 
+  // ✅ Gated View: Displays restriction if user lacks create_project permission
   if (!canManage) {
     return (
       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
@@ -94,7 +86,7 @@ export default function CreateProjectModal({
           </div>
           <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Access Restricted</h2>
           <p className="text-slate-500 dark:text-slate-400 mb-8 font-medium">
-            Only <span className="text-indigo-600 font-bold uppercase text-xs">Managers</span>, <span className="text-indigo-600 font-bold uppercase text-xs">Leaders</span>, or <span className="text-indigo-600 font-bold uppercase text-xs">QA</span> can manage projects.
+            You do not have the <span className="text-indigo-600 font-bold uppercase text-xs">create_project</span> permission required for this action.
           </p>
           <button onClick={onClose} className="w-full py-4 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-200 transition-all">
             Return to Dashboard
@@ -112,7 +104,7 @@ export default function CreateProjectModal({
             {editingProject ? "Edit Project" : "Create New Project"}
           </h2>
           <div className="px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-full text-[10px] font-black uppercase tracking-widest">
-            {user?.position}
+            {user?.Role?.name || "Member"}
           </div>
         </div>
         
@@ -131,7 +123,7 @@ export default function CreateProjectModal({
             />
           </div>
 
-          {/* Assign Team Leader */}
+          {/* Lead Responsibility Dropdown */}
           <div>
             <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-2 tracking-widest">
               Assign Lead Responsibility
@@ -167,7 +159,7 @@ export default function CreateProjectModal({
             />
           </div>
 
-          {/* Priority */}
+          {/* Strategic Priority Grid */}
           <div>
             <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-3 tracking-widest">
               Strategic Priority

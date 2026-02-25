@@ -1,31 +1,36 @@
 const jwt = require("jsonwebtoken");
 const { CONFIG } = require("../config/db");
+const { User, Role, Permission } = require("../models");
 
-module.exports = (req, res, next) => {
+module.exports = async (req, res, next) => {
   const header = req.headers.authorization;
-
-  if (!header)
-    return res.status(401).json({ message: "No token provided" });
+  if (!header) return res.status(401).json({ message: "No token provided" });
 
   const token = header.split(" ")[1];
-  if (!token)
-    return res.status(401).json({ message: "Invalid token format" });
-
   try {
     const decoded = jwt.verify(token, CONFIG.JWT_SECRET);
-    req.user = decoded;
+    
+    const user = await User.findByPk(decoded.id, {
+      include: {
+        model: Role,
+        include: {
+          model: Permission,
+          through: { attributes: [] } // Clean junction table data
+        }
+      }
+    });
+
+    if (!user) return res.status(401).json({ message: "User no longer exists" });
+
+    // 🔥 Flatten permissions into a simple array of strings for easy checking
+    req.user = {
+      id: user.id,
+      role: user.Role?.name,
+      permissions: user.Role?.Permissions?.map(p => p.name) || []
+    };
+
     next();
   } catch (err) {
-
-    if (req.originalUrl.includes("/refresh")) {
-      const decoded = jwt.decode(token);
-      if (!decoded)
-        return res.status(401).json({ message: "Invalid token" });
-
-      req.user = decoded;
-      return next();
-    }
-
     return res.status(401).json({ message: "Token expired or invalid" });
   }
 };

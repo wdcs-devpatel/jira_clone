@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, permissions } = useAuth(); // ✅ Extract permissions from AuthContext
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -39,10 +39,10 @@ export default function Dashboard() {
   const [showCreateProject, setShowCreateProject] = useState<boolean>(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
 
+  // ✅ Updated logic: Use permissions instead of hardcoded position string
   const canManageProjects = useMemo(() => {
-    const role = user?.position?.trim().toLowerCase();
-    return role === "project manager";
-  }, [user]);
+    return permissions.includes("create_project");
+  }, [permissions]);
 
   const loadDashboard = useCallback(async (search: string, sort: string) => {
     setLoading(true);
@@ -82,7 +82,10 @@ export default function Dashboard() {
   }, [searchTerm, sortBy, loadDashboard]);
 
   async function handleSaveProject(projectData: Project) {
-    if (!canManageProjects) return;
+    if (!canManageProjects) {
+      toast.error("Unauthorized: Missing 'create_project' permission");
+      return;
+    }
     try {
       if (editingProject?.id !== undefined) {
         await updateProject(editingProject.id, projectData);
@@ -100,7 +103,9 @@ export default function Dashboard() {
   }
 
   async function handleDeleteProject(id: number) {
+    // ✅ Optional: You could use a separate "delete_project" permission here
     if (!canManageProjects) return;
+    
     if (window.confirm("Delete this project?")) {
       try {
         await deleteProject(id);
@@ -161,7 +166,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Stats Grid - REORDERED: Total -> To Do -> In Progress -> Completed */}
+        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
             { label: "Total Tasks", value: stats.total, icon: ListTodo, color: "text-indigo-600", bg: "bg-indigo-50 dark:bg-indigo-500/10" },

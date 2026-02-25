@@ -1,5 +1,3 @@
-// src/interfaces/task/task.interface.ts
-
 export type TaskId = string | number;
 export type TaskStatus = "todo" | "in-progress" | "done";
 export type TaskPriority = "high" | "medium" | "low";
@@ -13,5 +11,7 @@ export interface Task {
   description?: string;
   projectId?: string;
   assigneeId?: number;
+  subtasks?: any[];
+  comments?: any[];
   [key: string]: any;
 }
