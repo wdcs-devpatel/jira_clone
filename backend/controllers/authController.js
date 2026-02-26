@@ -112,4 +112,4 @@ exports.logout = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: "Logout failed" });
   }
-};
+};    

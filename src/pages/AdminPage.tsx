@@ -118,7 +118,6 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Permission Matrix Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {roles.map((role) => (
             <div key={role.id} className="bg-white dark:bg-slate-900 p-10 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl">

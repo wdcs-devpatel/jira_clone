@@ -21,7 +21,6 @@ const Project = sequelize.define("Project", {
   teamLeader: {
     type: DataTypes.STRING,
   },
-  // 🔥 Map to exact camelCase column in pgAdmin
   userId: {
     type: DataTypes.INTEGER,
     allowNull: false,
@@ -32,8 +31,8 @@ const Project = sequelize.define("Project", {
     defaultValue: [],
   },
 }, {
-  tableName: "Projects", // ⚠️ Matches capitalized table name in pgAdmin
-  timestamps: true,      // Uses createdAt and updatedAt
+  tableName: "Projects", 
+  timestamps: true,      
 });
 
 module.exports = Project;

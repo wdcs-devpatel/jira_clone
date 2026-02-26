@@ -18,7 +18,7 @@ const Role = sequelize.define("Role", {
   }
 }, { 
   tableName: 'roles',
-  underscored: true, // 🔥 This tells Sequelize to look for created_at instead of createdAt
+  underscored: true, 
   timestamps: true 
 });
 

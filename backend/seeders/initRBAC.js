@@ -10,7 +10,15 @@ const initializeRBAC = async () => {
       });
     }
 
-    const perms = ["create_project", "create_task", "edit_task", "delete_task", "view_admin_panel"];
+    const perms = [
+      "create_project", 
+      "create_task", 
+      "edit_task", 
+      "delete_task", 
+      "view_admin_panel",
+      "view_users" 
+    ];
+
     for (const name of perms) {
       await Permission.findOrCreate({ where: { name } });
     }
@@ -19,7 +27,7 @@ const initializeRBAC = async () => {
     const allPerms = await Permission.findAll();
     await adminRole.setPermissions(allPerms);
 
-    console.log("✅ RBAC System Initialized");
+    console.log("✅ RBAC System Initialized with view_users");
   } catch (err) {
     console.error("❌ RBAC Error:", err);
   }

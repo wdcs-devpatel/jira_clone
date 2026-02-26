@@ -1,16 +1,18 @@
 const router = require("express").Router();
+
 const auth = require("../middleware/auth");
-const requireRole = require("../middleware/requireRole");
+const requirePermission = require("../middleware/requirePermission");
 const { Permission } = require("../models");
 
 /* =====================================================
-   GET ALL PERMISSIONS (Admin Only)
+   GET ALL PERMISSIONS
+   Requires: view_admin_panel
 ===================================================== */
 
 router.get(
   "/",
   auth,
-  requireRole("Admin"),
+  requirePermission("view_admin_panel"),
   async (req, res, next) => {
     try {
       const permissions = await Permission.findAll({

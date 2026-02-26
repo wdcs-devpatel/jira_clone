@@ -7,7 +7,7 @@ import {
   Sun,
   Moon,
   UserCircle,
-  ShieldCheck, // Added icon for Admin
+  ShieldCheck,
 } from "lucide-react";
 
 import jiraLogo from "../assets/jira-logo.png";
@@ -17,17 +17,18 @@ import { useTheme } from "../context/ThemeContext";
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout, user } = useAuth(); // Access user from AuthContext
+  const { logout, user } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
   const [isOpen, setIsOpen] = useState(false);
-  
   const [activeProjectId, setActiveProjectId] = useState<string | null>(
     localStorage.getItem("currentProjectId")
   );
 
-  // Check for Admin status - updated to match your new RBAC structure
-  const isAdmin = user?.Role?.name === "Admin" || user?.role === "Admin";
+  /* =====================================================
+     🔥 PERMISSION-BASED ADMIN ACCESS
+     ===================================================== */
+  const canViewAdmin = user?.permissions?.includes("view_admin_panel");
 
   useEffect(() => {
     const storedId = localStorage.getItem("currentProjectId");
@@ -36,7 +37,7 @@ export default function Navbar() {
 
   const handleLogout = () => {
     logout();
-    localStorage.clear(); 
+    localStorage.clear();
     navigate("/");
   };
 
@@ -47,6 +48,8 @@ export default function Navbar() {
 
   return (
     <nav className="sticky top-0 z-50 px-6 py-3 flex justify-between items-center bg-indigo-600 dark:bg-slate-900/80 backdrop-blur-md border-b border-white/10 dark:border-slate-800/60 shadow-md transition-all duration-300">
+      
+      {/* Logo Section */}
       <div className="flex items-center gap-3">
         <div className="bg-white p-1.5 rounded-xl shadow-inner dark:bg-slate-800 dark:ring-1 dark:ring-white/10">
           <img src={jiraLogo} alt="logo" className="h-7 w-7 object-contain" />
@@ -62,24 +65,26 @@ export default function Navbar() {
         </Link>
       </div>
 
+      {/* Navigation Links */}
       <div className="flex items-center gap-10 text-[13px] uppercase tracking-wider">
         <div className="hidden md:flex gap-10">
           <NavLink to="/dashboard" className={getLinkClass}>
             Dashboard
           </NavLink>
+
           <NavLink to="/tasks" className={getLinkClass}>
             Tasks
           </NavLink>
-          
-          <NavLink 
-            to={`/team/${activeProjectId || 1}`} 
+
+          <NavLink
+            to={`/team/${activeProjectId || 1}`}
             className={getLinkClass}
           >
             Team
           </NavLink>
 
-          {/* 🔥 NEW: Admin Link - Only visible to Admins */}
-          {isAdmin && (
+          {/* 🔥 Admin Panel - Permission Based */}
+          {canViewAdmin && (
             <NavLink to="/admin" className={getLinkClass}>
               <span className="flex items-center gap-1">
                 <ShieldCheck size={14} /> Admin
@@ -88,18 +93,26 @@ export default function Navbar() {
           )}
         </div>
 
+        {/* Right Section */}
         <div className="flex items-center gap-5 border-l border-white/20 dark:border-slate-800 pl-8">
+          
+          {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
-            className="p-2.5 rounded-xl bg-white/10 dark:bg-slate-800/40 hover:bg-white/20 dark:hover:bg-slate-700/60 dark:hover:ring-1 dark:ring-white/5 transition-all text-white dark:text-amber-300"
+            className="p-2.5 rounded-xl bg-white/10 dark:bg-slate-800/40 hover:bg-white/20 dark:hover:bg-slate-700/60 transition-all text-white dark:text-amber-300"
           >
-            {theme === "dark" ? <Sun size={18} strokeWidth={2.5} /> : <Moon size={18} strokeWidth={2.5} />}
+            {theme === "dark" ? (
+              <Sun size={18} strokeWidth={2.5} />
+            ) : (
+              <Moon size={18} strokeWidth={2.5} />
+            )}
           </button>
 
+          {/* Profile Dropdown */}
           <div className="relative">
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="flex items-center gap-3 p-1.5 pr-4 rounded-2xl hover:bg-white/10 dark:hover:bg-slate-800/60 transition-all border border-transparent dark:hover:border-white/5"
+              className="flex items-center gap-3 p-1.5 pr-4 rounded-2xl hover:bg-white/10 dark:hover:bg-slate-800/60 transition-all border border-transparent"
             >
               <div className="h-9 w-9 rounded-xl bg-white/20 dark:bg-indigo-500/10 border border-white/10 dark:border-indigo-500/20 flex items-center justify-center text-white dark:text-indigo-400">
                 <User size={20} strokeWidth={2.5} />
@@ -114,22 +127,30 @@ export default function Navbar() {
 
             {isOpen && (
               <div className="absolute right-0 mt-4 w-56 bg-white dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200 dark:border-white/5 overflow-hidden">
+                
                 <div className="px-4 py-3 border-b border-slate-100 dark:border-white/5 mb-1">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    {user?.username} ({user?.Role?.name || 'User'})
+                    {user?.username} ({user?.Role?.name || "User"})
                   </p>
                 </div>
+
                 <button
-                  onClick={() => { setIsOpen(false); navigate("/profile"); }}
+                  onClick={() => {
+                    setIsOpen(false);
+                    navigate("/profile");
+                  }}
                   className="w-full px-4 py-3 flex items-center gap-3 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-indigo-500/10 transition-colors"
                 >
-                  <UserCircle size={18} className="text-slate-400" /> Profile
+                  <UserCircle size={18} className="text-slate-400" />
+                  Profile
                 </button>
+
                 <button
                   onClick={handleLogout}
                   className="w-full px-4 py-3 flex items-center gap-3 text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
                 >
-                  <LogOut size={18} /> Logout
+                  <LogOut size={18} />
+                  Logout
                 </button>
               </div>
             )}

@@ -1,23 +1,33 @@
 const router = require("express").Router();
+
 const auth = require("../middleware/auth");
-const requireRole = require("../middleware/requireRole");
+const requirePermission = require("../middleware/requirePermission");
 const roleController = require("../controllers/roleController");
 
 /* =====================================================
-   ADMIN ONLY ROUTES
+   ROLE MANAGEMENT ROUTES
+   Permission-Based RBAC (Correct Architecture)
 ===================================================== */
 
+/**
+ * GET ALL ROLES WITH PERMISSIONS
+ * Requires: view_admin_panel
+ */
 router.get(
   "/",
   auth,
-  requireRole("Admin"),
+  requirePermission("view_admin_panel"),
   roleController.getRoles
 );
 
+/**
+ * UPDATE ROLE PERMISSIONS
+ * Requires: view_admin_panel
+ */
 router.put(
   "/:roleId/permissions",
   auth,
-  requireRole("Admin"),
+  requirePermission("view_admin_panel"),
   roleController.updateRolePermissions
 );
 

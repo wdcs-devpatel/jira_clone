@@ -13,7 +13,7 @@ exports.createProject = async (req, res, next) => {
   try {
     const project = await Project.create({
       ...req.body,
-      userId: req.user.id // ✅ Correct camelCase field mapping
+      userId: req.user.id 
     });
     res.status(201).json(project);
   } catch (err) {
@@ -46,7 +46,6 @@ exports.getProjects = async (req, res, next) => {
       }
     });
 
-    // 3. Combine and filter for unique entries
     const combined = [...ownedProjects, ...assignedProjects];
     const uniqueProjects = Object.values(
       combined.reduce((acc, p) => {

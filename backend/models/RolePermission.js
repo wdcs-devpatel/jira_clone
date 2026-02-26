@@ -11,7 +11,7 @@ const RolePermission = sequelize.define("role_permissions", {
     primaryKey: true,
   },
 }, {
-  timestamps: false // 🚀 CRITICAL
+  timestamps: false 
 });
 
 module.exports = RolePermission;

@@ -13,8 +13,8 @@ const Permission = sequelize.define("Permission", {
     allowNull: false,
   },
 }, { 
-  tableName: 'permissions',
-  underscored: true, // 🔥 Add this
+  tableName: 'permissions', 
+  underscored: true, 
   timestamps: true 
 });
 

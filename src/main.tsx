@@ -7,7 +7,7 @@ import App from "./App";
 import "./index.css";
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
-        
+       console.log("BASE URL:", import.meta.env.VITE_API_BASE_URL);
 ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
 ).render(

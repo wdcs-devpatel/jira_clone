@@ -1,4 +1,4 @@
-require("dotenv").config();
+  require("dotenv").config();
 const { Sequelize } = require("sequelize");
 
 /* ===============================
@@ -49,8 +49,6 @@ const sequelize = new Sequelize(
     dialect: CONFIG.DB.dialect,
     logging: false,
     define: {
-      // ❌ REMOVED: underscored: true
-      // ✅ FIX: Set underscored to false to match 'createdAt' and 'updatedAt' in pgAdmin
       underscored: false, 
       timestamps: true,   
       freezeTableName: true 
@@ -64,9 +62,9 @@ const sequelize = new Sequelize(
 const connectDB = async () => {
   try {
     await sequelize.authenticate();
-    console.log("PostgreSQL Connected");
+    console.log("✅ PostgreSQL Connected Successfully");
   } catch (error) { 
-    console.error("DB Connection Failed:", error.message);
+    console.error("❌ DB Connection Failed:", error.message);
     process.exit(1);
   }
 };

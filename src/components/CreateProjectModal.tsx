@@ -25,7 +25,6 @@ export default function CreateProjectModal({
   const [managers, setManagers] = useState<UserInterface[]>([]); 
   const [fetchError, setFetchError] = useState<boolean>(false);
 
-  // ✅ RBAC Gate: Uses the flattened permissions array from AuthContext
   const permissions = user?.permissions || [];
   const canManage = permissions.includes("create_project");
   const canViewUsers = permissions.includes("view_users");
@@ -64,7 +63,6 @@ export default function CreateProjectModal({
       setName("");
       setDescription("");
       setPriority("medium");
-      // Fallback to current user if management list is blocked
       setTeamLeader(user?.username || "");
     }
   }, [editingProject, user, canManage]);
@@ -73,7 +71,7 @@ export default function CreateProjectModal({
     e.preventDefault();
     
     if (!canManage) {
-      return; // UI is gated, but double check for safety
+      return; 
     }
 
     onSaved({ 

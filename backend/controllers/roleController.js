@@ -18,14 +18,23 @@ exports.updateRolePermissions = async (req, res, next) => {
     const { permissionIds } = req.body;
 
     const role = await Role.findByPk(roleId);
-    if (!role) return res.status(404).json({ message: "Role not found" });
-    
-    // 🔥 Strict Rule: Prevent modifying Admin role permissions via API if desired
-    if (role.name === "Admin" && role.is_system) {
-       // Optional: return res.status(403).json({ message: "System Admin cannot be modified" });
+
+    if (!role) {
+      return res.status(404).json({ message: "Role not found" });
+    }
+
+    // 🔥 PROTECT ADMIN ROLE
+    if (role.name === "Admin") {
+      return res.status(403).json({
+        message: "Admin role permissions cannot be modified"
+      });
     }
 
     await role.setPermissions(permissionIds);
+
     res.json({ message: "Permissions updated successfully" });
-  } catch (err) { next(err); }
+
+  } catch (err) {
+    next(err);
+  }
 };

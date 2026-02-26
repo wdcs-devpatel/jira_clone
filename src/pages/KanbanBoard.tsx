@@ -32,7 +32,6 @@ export default function KanbanBoard() {
   const [doneNotification, setDoneNotification] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Permission gating for UI elements
   const canCreateTask = permissions.includes("create_task");
   const canUpdateStatus = permissions.includes("edit_task"); 
   const canViewUsers = permissions.includes("view_users");
@@ -56,13 +55,11 @@ export default function KanbanBoard() {
     try {
       setLoading(true);
 
-      // ✅ 1. Fetch Project Members first (Always allowed for project participants)
       const memberIdsRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/projects/${numericProjectId}/members`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` }
       });
       const memberIds: number[] = memberIdsRes.data;
 
-      // ✅ 2. Fetch Users only if permissions allow, otherwise fallback to empty array
       let allUsers: any[] = [];
       if (canViewUsers) {
         try {
@@ -72,7 +69,6 @@ export default function KanbanBoard() {
         }
       }
 
-      // ✅ 3. Sort users (if any found)
       const sortedUsers = allUsers.sort((a: any, b: any) => {
         const aIsMember = memberIds.includes(Number(a.id));
         const bIsMember = memberIds.includes(Number(b.id));
@@ -151,7 +147,7 @@ export default function KanbanBoard() {
   }
 
   return (
-    <div className="relative min-h-screen bg-slate-50 dark:bg-[#0b1220] p-6 md:p-10 transition-colors duration-300">
+    <div className="relative min-h-screen bg-slate-50 dark:bg-[#0b1220] p-4 md:p-8 transition-colors duration-300">
       
       {doneNotification && (
         <div className="fixed top-10 left-1/2 -translate-x-1/2 z-[110] animate-in slide-in-from-top-10 fade-in duration-500 ease-out">
@@ -164,8 +160,8 @@ export default function KanbanBoard() {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
+      <div className="max-w-[1600px] mx-auto"> {/* Increased max-width for better fit */}
+        <div className="flex justify-between items-center mb-6">
            <Link to="/dashboard" className="text-slate-500 hover:text-indigo-500 flex items-center gap-2 text-xs font-bold uppercase tracking-widest transition-colors">
             <ArrowLeft size={14} /> Back to Dashboard
           </Link>
@@ -184,13 +180,21 @@ export default function KanbanBoard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* ✅ CHANGE: Reduced gap to gap-4 to prevent cards from being too wide */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {COLUMNS.map((col) => (
             <div key={col.key} onDragOver={onDragOver} onDrop={(e) => onDrop(e, col.key)} className="h-full">
               <KanbanColumn
                 title={col.title}
                 status={col.key}
-                tasks={tasks.filter((t) => t.status === col.key)}
+                // ✅ CHANGE: Injected assigneeUser object by matching ID
+                tasks={tasks
+                  .filter((t) => t.status === col.key)
+                  .map((t) => ({
+                    ...t,
+                    assignee: users.find((u) => Number(u.id) === Number(t.assigneeId))
+                  }))
+                }
                 users={users} 
                 onEdit={handleNavigateToTask} 
                 onDelete={() => {}} 
