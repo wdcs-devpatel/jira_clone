@@ -7,7 +7,7 @@ const { Op } = require("sequelize");
 exports.searchTasks = async (req, res, next) => {
   try {
     const q = req.query.q || "";
-    const isAdmin = req.user.Role?.name === "Admin";
+    const isAdmin = req.user.role === "Admin"; // ✅ Updated direct check
 
     const whereCondition = {
       title: { [Op.iLike]: `%${q}%` }
@@ -51,7 +51,7 @@ exports.searchTasks = async (req, res, next) => {
 exports.createTask = async (req, res, next) => {
   try {
     const { projectId } = req.params;
-    const isAdmin = req.user.Role?.name === "Admin";
+    const isAdmin = req.user.role === "Admin"; // ✅ Updated direct check
 
     if (!projectId || isNaN(projectId)) {
       return res.status(400).json({ message: "Valid Project ID is required" });
@@ -105,7 +105,6 @@ exports.getTasksForProject = async (req, res, next) => {
       return res.status(404).json({ message: "Project not found" });
     }
 
-    // Note: Global project-task viewing is typically allowed if they can see the project.
     const tasks = await Task.findAll({
       where: { projectId },
       include: [
@@ -131,7 +130,7 @@ exports.getTasksForProject = async (req, res, next) => {
 exports.updateTask = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const isAdmin = req.user.Role?.name === "Admin";
+    const isAdmin = req.user.role === "Admin"; // ✅ Updated direct check
 
     if (!id || isNaN(id) || id === "NaN") {
       return res.status(400).json({ message: "Invalid Task ID provided" });
@@ -164,7 +163,7 @@ exports.updateTask = async (req, res, next) => {
 exports.updateTaskStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const isAdmin = req.user.Role?.name === "Admin";
+    const isAdmin = req.user.role === "Admin"; // ✅ Updated direct check
 
     if (!id || isNaN(id)) {
       return res.status(400).json({ message: "Invalid Task ID" });
@@ -198,7 +197,7 @@ exports.updateTaskStatus = async (req, res, next) => {
 exports.deleteTask = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const isAdmin = req.user.Role?.name === "Admin";
+    const isAdmin = req.user.role === "Admin"; // ✅ Updated direct check
 
     if (!id || isNaN(id)) {
       return res.status(400).json({ message: "Invalid Task ID" });
