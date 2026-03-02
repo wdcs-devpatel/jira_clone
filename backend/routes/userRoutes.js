@@ -1,19 +1,23 @@
-// backend/routes/userRoutes.js
 const express = require("express");
 const router = express.Router();
 const userController = require("../controllers/userController");
 const auth = require("../middleware/auth");
+const requirePermission = require("../middleware/requirePermission"); // ✅ Added import
 
-// ✅ 1. Add the Profile Fetch route (Fixes Profile.tsx fetch error)
+// 1. Profile Management
+// Fetches the logged-in user's own data
 router.get("/profile", auth, userController.getProfile);
 
-// ✅ 2. Add the Profile Update route (Fixes handleSave 404 error)
+// Updates the logged-in user's own data
 router.put("/profile", auth, userController.updateProfile);
 
-// ✅ 3. Ensure the base User List route exists (Fixes Admin Panel 404)
-// Change this line to include the permission check
+// 2. Administrative Personnel Management
+// ✅ Protected by 'view_users' permission
+// If a role does not have this permission, the API will return 403 Forbidden
 router.get("/", auth, requirePermission("view_users"), userController.getUsers);
-// Existing role update route
+
+// 3. Role Assignment
+// Updates a specific user's system rank/role
 router.put("/:userId/role", auth, userController.updateUserRole);
 
 module.exports = router;

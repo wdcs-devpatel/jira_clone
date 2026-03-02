@@ -25,10 +25,11 @@ export default function Navbar() {
     localStorage.getItem("currentProjectId")
   );
 
-  /* =====================================================
-     🔥 PERMISSION-BASED ADMIN ACCESS
-     ===================================================== */
-  const canViewAdmin = user?.permissions?.includes("view_admin_panel");
+  /* ============================================
+     🔥 ROLE / PERMISSION CHECKS
+     ============================================ */
+  const isAdmin = user?.permissions?.includes("view_admin_panel");
+  const canViewAdmin = isAdmin;
 
   useEffect(() => {
     const storedId = localStorage.getItem("currentProjectId");
@@ -49,7 +50,7 @@ export default function Navbar() {
   return (
     <nav className="sticky top-0 z-50 px-6 py-3 flex justify-between items-center bg-indigo-600 dark:bg-slate-900/80 backdrop-blur-md border-b border-white/10 dark:border-slate-800/60 shadow-md transition-all duration-300">
       
-      {/* Logo Section */}
+      {/* Logo */}
       <div className="flex items-center gap-3">
         <div className="bg-white p-1.5 rounded-xl shadow-inner dark:bg-slate-800 dark:ring-1 dark:ring-white/10">
           <img src={jiraLogo} alt="logo" className="h-7 w-7 object-contain" />
@@ -65,25 +66,33 @@ export default function Navbar() {
         </Link>
       </div>
 
-      {/* Navigation Links */}
+      {/* Navigation */}
       <div className="flex items-center gap-10 text-[13px] uppercase tracking-wider">
         <div className="hidden md:flex gap-10">
+
+          {/* Dashboard (visible to all logged users) */}
           <NavLink to="/dashboard" className={getLinkClass}>
             Dashboard
           </NavLink>
 
-          <NavLink to="/tasks" className={getLinkClass}>
-            Tasks
-          </NavLink>
+          {/* ❌ Hide Tasks if Admin */}
+          {!isAdmin && (
+            <NavLink to="/tasks" className={getLinkClass}>
+              Tasks
+            </NavLink>
+          )}
 
-          <NavLink
-            to={`/team/${activeProjectId || 1}`}
-            className={getLinkClass}
-          >
-            Team
-          </NavLink>
+          {/* ❌ Hide Team if Admin */}
+          {!isAdmin && (
+            <NavLink
+              to={`/team/${activeProjectId || 1}`}
+              className={getLinkClass}
+            >
+              Team
+            </NavLink>
+          )}
 
-          {/* 🔥 Admin Panel - Permission Based */}
+          {/* ✅ Admin Panel */}
           {canViewAdmin && (
             <NavLink to="/admin" className={getLinkClass}>
               <span className="flex items-center gap-1">
@@ -93,7 +102,7 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Right Section */}
+        {/* Right Side */}
         <div className="flex items-center gap-5 border-l border-white/20 dark:border-slate-800 pl-8">
           
           {/* Theme Toggle */}
@@ -112,9 +121,9 @@ export default function Navbar() {
           <div className="relative">
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="flex items-center gap-3 p-1.5 pr-4 rounded-2xl hover:bg-white/10 dark:hover:bg-slate-800/60 transition-all border border-transparent"
+              className="flex items-center gap-3 p-1.5 pr-4 rounded-2xl hover:bg-white/10 dark:hover:bg-slate-800/60 transition-all"
             >
-              <div className="h-9 w-9 rounded-xl bg-white/20 dark:bg-indigo-500/10 border border-white/10 dark:border-indigo-500/20 flex items-center justify-center text-white dark:text-indigo-400">
+              <div className="h-9 w-9 rounded-xl bg-white/20 dark:bg-indigo-500/10 flex items-center justify-center text-white dark:text-indigo-400">
                 <User size={20} strokeWidth={2.5} />
               </div>
               <ChevronDown
@@ -139,9 +148,9 @@ export default function Navbar() {
                     setIsOpen(false);
                     navigate("/profile");
                   }}
-                  className="w-full px-4 py-3 flex items-center gap-3 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-indigo-500/10 transition-colors"
+                  className="w-full px-4 py-3 flex items-center gap-3 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-indigo-500/10 transition-colors"
                 >
-                  <UserCircle size={18} className="text-slate-400" />
+                  <UserCircle size={18} />
                   Profile
                 </button>
 

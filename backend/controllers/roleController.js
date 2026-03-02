@@ -11,7 +11,6 @@ exports.getRoles = async (req, res, next) => {
     res.json(roles);
   } catch (err) { next(err); }
 };
-
 exports.updateRolePermissions = async (req, res, next) => {
   try {
     const { roleId } = req.params;
@@ -23,15 +22,15 @@ exports.updateRolePermissions = async (req, res, next) => {
       return res.status(404).json({ message: "Role not found" });
     }
 
-    // 🔥 PROTECT ADMIN ROLE
+    // 🔥 IMMUTABLE ADMIN CHECK
+    // This prevents ANY user from modifying the Admin role's capabilities via the API.
     if (role.name === "Admin") {
       return res.status(403).json({
-        message: "Admin role permissions cannot be modified"
+        message: "Security Policy: The Admin role is a system-level role and its permissions cannot be modified."
       });
     }
 
     await role.setPermissions(permissionIds);
-
     res.json({ message: "Permissions updated successfully" });
 
   } catch (err) {
