@@ -28,7 +28,6 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [expandedRoles, setExpandedRoles] = useState<Record<number, boolean>>({});
 
-  // ✅ Determine if all roles are currently expanded or collapsed for the bulk button
   const allExpanded = useMemo(() => {
     if (roles.length === 0) return false;
     return roles.every((r) => expandedRoles[r.id]);
@@ -53,7 +52,12 @@ export default function AdminPage() {
 
       setUsers(userData);
       setRoles(roleData);
-      setPermissionsList(permData);
+      
+      // 🔥 UPDATED: Only filter out 'view_dashboard'. 'view_users' is now included.
+      const filteredPerms = permData.filter((p: any) => 
+        p.name !== "view_dashboard"
+      );
+      setPermissionsList(filteredPerms);
 
       setExpandedRoles((prev) => {
         const updated: Record<number, boolean> = { ...prev };
@@ -71,7 +75,6 @@ export default function AdminPage() {
     }
   }
 
-  // ✅ Bulk Toggle Function
   const handleBulkToggle = () => {
     const newState = !allExpanded;
     const updated: Record<number, boolean> = {};
@@ -169,7 +172,7 @@ export default function AdminPage() {
               <h2 className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-white">Active Personnel</h2>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left">
+              <table className="w-full text-left border-collapse">
                 <thead className="bg-slate-50 dark:bg-slate-950/50">
                   <tr>
                     <th className="px-10 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">Identity</th>
@@ -192,7 +195,7 @@ export default function AdminPage() {
                         <select
                           value={u.Role?.id}
                           onChange={(e) => handleRoleChange(u.id, Number(e.target.value))}
-                          className="bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-2 text-[10px] font-black uppercase outline-none cursor-pointer hover:ring-2 hover:ring-indigo-500/20 transition-all"
+                          className="bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-2 text-[10px] font-black uppercase outline-none cursor-pointer hover:ring-2 hover:ring-indigo-500/20 transition-all shadow-sm"
                         >
                           {roles.map((r) => (
                             <option key={r.id} value={r.id}>{r.name}</option>
@@ -211,7 +214,7 @@ export default function AdminPage() {
         <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
           <div className="flex items-center gap-3">
             <Layers size={20} className="text-indigo-600" />
-            <h2 className="text-lg font-black uppercase tracking-widest text-slate-900 dark:text-white">Role</h2>
+            <h2 className="text-lg font-black uppercase tracking-widest text-slate-900 dark:text-white">Role Hierarchy</h2>
           </div>
           
           <button 
