@@ -23,7 +23,7 @@ export async function getAllPermissions() {
   } catch (error: any) {
     console.error("Error fetching permissions:", error);
     throw error;
-  }
+  } 
 }
 
 /**

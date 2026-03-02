@@ -7,7 +7,6 @@ import { api } from "./services/authService";
 function App() {
   const [showPopup, setShowPopup] = useState(false);
 
-  // Hook triggers when the session is nearing expiry
   useSessionTimer(() => setShowPopup(true));
 
   const stayLoggedIn = async () => {

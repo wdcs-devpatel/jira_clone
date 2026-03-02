@@ -7,7 +7,6 @@ const { Op } = require("sequelize");
 
 /**
  * CREATE PROJECT
- * Maps the owner to the 'userId' field in the 'Projects' table.
  */
 exports.createProject = async (req, res, next) => {
   try {
@@ -23,19 +22,28 @@ exports.createProject = async (req, res, next) => {
 
 /**
  * GET ALL PROJECTS
- * Retrieves projects using the 'Projects' and 'Tasks' tables as seen in pgAdmin.
+ * 🔥 ADMIN: returns ALL projects in the system.
  */
 exports.getProjects = async (req, res, next) => {
   try {
-    // 1. Projects owned by user (ordering by the correct camelCase column)
+    // ✅ Updated check
+    const isAdmin = req.user.role === "Admin";
+
+    if (isAdmin) {
+      const allProjects = await Project.findAll({
+        order: [["createdAt", "DESC"]],
+      });
+      return res.json(allProjects);
+    }
+
+    // Normal User Logic
     const ownedProjects = await Project.findAll({
       where: { userId: req.user.id },
-      order: [["createdAt", "DESC"]], // ✅ Matches pgAdmin 'createdAt' column
+      order: [["createdAt", "DESC"]], 
     });
 
-    // 2. Projects where user is a task assignee
     const assignedTasks = await Task.findAll({
-      where: { assigneeId: req.user.id } // ✅ Matches 'assigneeId' in Task table
+      where: { assigneeId: req.user.id } 
     });
 
     const assignedProjectIds = [...new Set(assignedTasks.map(t => t.projectId))];
@@ -63,7 +71,6 @@ exports.getProjects = async (req, res, next) => {
 
 /**
  * GET SINGLE PROJECT
- * Access logic using direct ID comparisons for RBAC stability.
  */
 exports.getProject = async (req, res, next) => {
   try {
@@ -73,12 +80,18 @@ exports.getProject = async (req, res, next) => {
       return res.status(404).json({ message: "Project not found" });
     }
 
+    // 🔥 ADMIN BYPASS - Updated check
+    const isAdmin = req.user.role === "Admin";
+    if (isAdmin) {
+      return res.json(project);
+    }
+
     // Allow if owner
     if (Number(project.userId) === Number(req.user.id)) {
       return res.json(project);
     }
 
-    // Allow if assigned to a task within the 'Tasks' table
+    // Allow if assigned to a task within the project
     const assigned = await Task.findOne({
       where: {
         projectId: project.id,
@@ -98,13 +111,17 @@ exports.getProject = async (req, res, next) => {
 
 /**
  * UPDATE PROJECT
- * Validates ownership against the 'userId' column before updating.
  */
 exports.updateProject = async (req, res, next) => {
   try {
-    const project = await Project.findOne({
-      where: { id: req.params.id, userId: req.user.id }
-    });
+    // ✅ Updated check
+    const isAdmin = req.user.role === "Admin";
+    
+    const queryCondition = isAdmin 
+      ? { id: req.params.id } 
+      : { id: req.params.id, userId: req.user.id };
+
+    const project = await Project.findOne({ where: queryCondition });
 
     if (!project) {
       return res.status(404).json({ message: "Project not found or unauthorized" });
@@ -128,9 +145,14 @@ exports.updateProject = async (req, res, next) => {
  */
 exports.deleteProject = async (req, res, next) => {
   try {
-    const project = await Project.findOne({
-      where: { id: req.params.id, userId: req.user.id }
-    });
+    // ✅ Updated check
+    const isAdmin = req.user.role === "Admin";
+    
+    const queryCondition = isAdmin 
+      ? { id: req.params.id } 
+      : { id: req.params.id, userId: req.user.id };
+
+    const project = await Project.findOne({ where: queryCondition });
 
     if (!project) {
       return res.status(404).json({ message: "Project not found or unauthorized" });
@@ -149,20 +171,21 @@ exports.deleteProject = async (req, res, next) => {
 
 /**
  * ADD TEAM MEMBER
- * Updates the 'members' JSON column in the 'Projects' table.
  */
 exports.addMember = async (req, res, next) => {
   try {
     const { userId } = req.body;
     const project = await Project.findByPk(req.params.id);
+    
+    // ✅ Updated check
+    const isAdmin = req.user.role === "Admin";
 
     if (!project)
       return res.status(404).json({ message: "Project not found" });
 
-    // Security: Explicit ownership check
-    if (Number(project.userId) !== Number(req.user.id)) {
+    if (!isAdmin && Number(project.userId) !== Number(req.user.id)) {
       return res.status(403).json({
-        message: "Only the project owner can add members"
+        message: "Only the project owner or Admin can add members"
       });
     }
 
@@ -197,11 +220,14 @@ exports.removeMember = async (req, res, next) => {
   try {
     const { id, userId } = req.params;
     const project = await Project.findByPk(id);
+    
+    // ✅ Updated check
+    const isAdmin = req.user.role === "Admin";
 
     if (!project) return res.status(404).json({ message: "Project not found" });
 
-    if (Number(project.userId) !== Number(req.user.id)) {
-      return res.status(403).json({ message: "Only owner can remove members" });
+    if (!isAdmin && Number(project.userId) !== Number(req.user.id)) {
+      return res.status(403).json({ message: "Only owner or Admin can remove members" });
     }
 
     const currentMembers = project.members || [];
@@ -218,7 +244,6 @@ exports.removeMember = async (req, res, next) => {
 
 /**
  * GET PROJECT MEMBERS
- * Merges 'userId' (owner) and 'members' (invited) array.
  */
 exports.getMembers = async (req, res, next) => {
   try {

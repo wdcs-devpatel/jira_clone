@@ -24,7 +24,7 @@ export default function TeamMembers() {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const numericId = Number(projectId);
-  const { user: loggedInUser, permissions } = useAuth(); // ✅ Access permissions
+  const { user: loggedInUser, permissions } = useAuth();
 
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [team, setTeam] = useState<User[]>([]);
@@ -33,8 +33,8 @@ export default function TeamMembers() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Check if the user is allowed to even see the "Add Talent" section
   const canViewAllUsers = permissions.includes("view_users");
+
 
   useEffect(() => {
     if (numericId && !isNaN(numericId)) {
@@ -42,13 +42,13 @@ export default function TeamMembers() {
     } else {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, canViewAllUsers]); 
 
   async function load() {
     try {
       setLoading(true);
 
-      // ✅ Fetch members and project details first (should be allowed for project members)
+      // 1. Fetch project members and project details
       const [membersRes, projectRes] = await Promise.all([
         api.get(`/projects/${numericId}/members`),
         api.get(`/projects/${numericId}`)
@@ -56,29 +56,26 @@ export default function TeamMembers() {
 
       const fetchedOwnerId = Number(projectRes.data.userId || projectRes.data.ownerId);
       setOwnerId(fetchedOwnerId);
+      
+      // Store IDs of users already in the project
       const memberIds: number[] = membersRes.data.map((id: any) => Number(id));
 
-      // ✅ Only fetch global users if permissions allow it
+      // 2. Only fetch global users if permissions allow it
       if (canViewAllUsers) {
-        try {
-          const usersRes = await api.get(`/users`);
-          const processedUsers = usersRes.data.map((u: any) => ({
-            ...u,
-            id: Number(u.id),
-            name: u.firstName || u.username || `User #${u.id}`,
-            position: u.position || "Developer" 
-          }));
-          setAllUsers(processedUsers);
-          setTeam(processedUsers.filter((u: User) => memberIds.includes(Number(u.id))));
-        } catch (err: any) {
-          if (err.response?.status === 403) {
-            console.warn("User does not have permission to view all users.");
-          }
-        }
+        const usersRes = await api.get(`/users`);
+        const processedUsers = usersRes.data.map((u: any) => ({
+          ...u,
+          id: Number(u.id),
+          name: u.firstName || u.username || `User #${u.id}`,
+          position: u.position || "Developer" 
+        }));
+
+        setAllUsers(processedUsers);
+        
+        const currentTeam = processedUsers.filter((u: User) => memberIds.includes(u.id));
+        setTeam(currentTeam);
       } else {
-        // If can't view all users, at least show basic info for known members
-        // (You might need a specific endpoint like /projects/:id/members-details)
-        console.log("Permission 'view_users' missing: Only showing member IDs.");
+        setTeam([]); 
       }
 
     } catch (err: any) {
@@ -155,13 +152,13 @@ export default function TeamMembers() {
                 placeholder="Search talent to add..."
                 value={searchTerm}
                 onChange={(e)=>setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:ring-2 ring-indigo-500/20 text-slate-900 dark:text-white transition-all"
+                className="w-full pl-12 pr-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:ring-2 ring-indigo-500/20 text-slate-900 dark:text-white transition-all shadow-sm"
               />
             </div>
           )}
         </div>
 
-        {/* --- Current Members Section --- */}
+        {/* Current Members Section */}
         <section>
           <div className="flex items-center gap-2 mb-8">
             <div className="w-8 h-1 bg-indigo-500 rounded-full"/>
@@ -182,7 +179,7 @@ export default function TeamMembers() {
           </div>
         </section>
 
-        {/* --- Add Talent Section --- */}
+        {/* Add Talent Section */}
         {canViewAllUsers && (
           <section>
             <div className="flex items-center gap-2 mb-8">

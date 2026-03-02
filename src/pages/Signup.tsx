@@ -2,7 +2,7 @@ import { useState, ChangeEvent, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { registerUser } from "../services/authService";
-import { useAuth } from "../context/AuthContext"; // ✅ Added to check auth status
+import { useAuth } from "../context/AuthContext"; 
 import {
   UserPlus,
   ArrowLeft
@@ -20,7 +20,7 @@ interface SignupForm {
 
 export default function Signup() {
   const navigate = useNavigate();
-  const { token } = useAuth(); // ✅ Determine if an Admin is logged in
+  const { token } = useAuth(); 
 
   const [form, setForm] = useState<SignupForm>({
     firstName: "",
@@ -59,10 +59,8 @@ export default function Signup() {
         password: form.password
       });
 
-      // ✅ Adaptive success message
       toast.success(token ? "Personnel registered successfully!" : "Registration successful! You are assigned as Dev.");
       
-      // ✅ If Admin is logged in, go back to Admin page, else go to login/home
       navigate(token ? "/admin" : "/");
 
     } catch (err: any) {
@@ -79,7 +77,7 @@ export default function Signup() {
         <div className="text-center mb-8 relative">
           <button
             type="button"
-            onClick={() => navigate(-1)} // ✅ FIXED: Goes back to the previous page (Admin or Home)
+            onClick={() => navigate(-1)} 
             className="absolute left-0 top-0 p-3 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
           >
             <ArrowLeft size={18} />
@@ -90,7 +88,7 @@ export default function Signup() {
           </div>
 
           <h2 className="text-4xl font-black text-slate-900 dark:text-white uppercase">
-            {token ? "Create Personnel" : "Join Team"} {/* ✅ Dynamic Title */}
+            {token ? "Create Personnel" : "Join Team"} 
           </h2>
 
           <p className="text-xs text-slate-500 mt-2 uppercase tracking-widest">

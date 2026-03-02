@@ -75,14 +75,12 @@ export default function Navbar() {
             Dashboard
           </NavLink>
 
-          {/* ❌ Hide Tasks if Admin */}
-          {!isAdmin && (
+          
             <NavLink to="/tasks" className={getLinkClass}>
               Tasks
             </NavLink>
-          )}
+          
 
-          {/* ❌ Hide Team if Admin */}
           {!isAdmin && (
             <NavLink
               to={`/team/${activeProjectId || 1}`}

@@ -42,7 +42,6 @@ export default function ProjectCard({
   };
 
   const handleNavigate = () => {
-    // FIX: Only navigate and set storage if ID exists
     if (project.id) {
       localStorage.setItem("currentProjectId", String(project.id));
       navigate(`/kanban/${project.id}`);

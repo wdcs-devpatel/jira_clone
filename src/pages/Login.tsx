@@ -22,12 +22,10 @@ export default function Login() {
     try {
       const data = await loginUser(identifier, password);
 
-      // ✅ Verify response includes the nested RBAC structure
       if (!data.accessToken || !data.user) {
         throw new Error("Invalid response: Missing RBAC data");
       }
-
-      // ✅ Pass the entire user object (with Role and permissions) to context
+      
       login(
         {
           accessToken: data.accessToken,
