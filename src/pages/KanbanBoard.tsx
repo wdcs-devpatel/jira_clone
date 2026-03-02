@@ -22,7 +22,7 @@ const COLUMNS: { key: Status; title: string }[] = [
 ];
 
 export default function KanbanBoard() {
-  const { user, permissions } = useAuth();
+  const { permissions } = useAuth();
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId: string }>();
   const numericProjectId = projectId ? Number(projectId) : null;
@@ -55,17 +55,21 @@ export default function KanbanBoard() {
     try {
       setLoading(true);
 
-      const memberIdsRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/projects/${numericProjectId}/members`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` }
-      });
+      const memberIdsRes = await axios.get(
+        `${import.meta.env.VITE_API_BASE_URL}/projects/${numericProjectId}/members`,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` }
+        }
+      );
+
       const memberIds: number[] = memberIdsRes.data;
 
       let allUsers: any[] = [];
       if (canViewUsers) {
         try {
           allUsers = await getUsers();
-        } catch (uErr) {
-          console.warn("RBAC: User cannot view global user list.");
+        } catch {
+          console.warn("RBAC: Cannot view user list.");
         }
       }
 
@@ -113,12 +117,14 @@ export default function KanbanBoard() {
     if (!canUpdateStatus) return;
 
     const taskId = e.dataTransfer.getData("taskId");
+
     if (taskId) {
       if (newStatus === "done") {
         const droppedTask = tasks.find(t => String(t.id) === taskId);
         setDoneNotification(`Nice work! "${droppedTask?.title || 'Task'}" is completed.`);
         setTimeout(() => setDoneNotification(null), 3000);
       }
+
       try {
         await updateTaskStatus(taskId, newStatus);
         await loadTasks();
@@ -148,7 +154,7 @@ export default function KanbanBoard() {
 
   return (
     <div className="relative min-h-screen bg-slate-50 dark:bg-[#0b1220] p-4 md:p-8 transition-colors duration-300">
-      
+
       {doneNotification && (
         <div className="fixed top-10 left-1/2 -translate-x-1/2 z-[110] animate-in slide-in-from-top-10 fade-in duration-500 ease-out">
           <div className="bg-emerald-500 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 border border-emerald-400">
@@ -160,9 +166,12 @@ export default function KanbanBoard() {
         </div>
       )}
 
-      <div className="max-w-[1600px] mx-auto"> {/* Increased max-width for better fit */}
+      <div className="max-w-[1600px] mx-auto">
         <div className="flex justify-between items-center mb-6">
-           <Link to="/dashboard" className="text-slate-500 hover:text-indigo-500 flex items-center gap-2 text-xs font-bold uppercase tracking-widest transition-colors">
+          <Link
+            to="/dashboard"
+            className="text-slate-500 hover:text-indigo-500 flex items-center gap-2 text-xs font-bold uppercase tracking-widest transition-colors"
+          >
             <ArrowLeft size={14} /> Back to Dashboard
           </Link>
           
@@ -180,25 +189,27 @@ export default function KanbanBoard() {
           </div>
         </div>
 
-        {/* ✅ CHANGE: Reduced gap to gap-4 to prevent cards from being too wide */}
+        {/* ✅ CLEAN VERSION — No assignee injection here */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {COLUMNS.map((col) => (
-            <div key={col.key} onDragOver={onDragOver} onDrop={(e) => onDrop(e, col.key)} className="h-full">
+            <div
+              key={col.key}
+              onDragOver={onDragOver}
+              onDrop={(e) => onDrop(e, col.key)}
+              className="h-full"
+            >
               <KanbanColumn
                 title={col.title}
                 status={col.key}
-                // ✅ CHANGE: Injected assigneeUser object by matching ID
-                tasks={tasks
-                  .filter((t) => t.status === col.key)
-                  .map((t) => ({
-                    ...t,
-                    assignee: users.find((u) => Number(u.id) === Number(t.assigneeId))
-                  }))
+                tasks={tasks.filter((t) => t.status === col.key)}
+                users={users}
+                onEdit={handleNavigateToTask}
+                onDelete={() => {}}
+                onAddClick={
+                  canCreateTask
+                    ? () => handleNavigateToTask(null, col.key)
+                    : () => {}
                 }
-                users={users} 
-                onEdit={handleNavigateToTask} 
-                onDelete={() => {}} 
-                onAddClick={canCreateTask ? () => handleNavigateToTask(null, col.key) : () => {}}
                 onDragStart={handleDragStart}
               />
             </div>

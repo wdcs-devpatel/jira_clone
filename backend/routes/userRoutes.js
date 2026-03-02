@@ -11,8 +11,8 @@ router.get("/profile", auth, userController.getProfile);
 router.put("/profile", auth, userController.updateProfile);
 
 // ✅ 3. Ensure the base User List route exists (Fixes Admin Panel 404)
-router.get("/", auth, userController.getUsers);
-
+// Change this line to include the permission check
+router.get("/", auth, requirePermission("view_users"), userController.getUsers);
 // Existing role update route
 router.put("/:userId/role", auth, userController.updateUserRole);
 

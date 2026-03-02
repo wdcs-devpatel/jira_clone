@@ -16,7 +16,7 @@ interface KanbanCardProps {
   onEdit: (task: Task) => void;
   onDelete: (taskId: TaskId) => void;
   onDragStart: (e: React.DragEvent, taskId: TaskId) => void;
-  assignee?: { name: string; avatar?: string }; 
+  assignee?: { name: string; avatar?: string };
   leader?: { name: string; avatar?: string };
 }
 
@@ -28,6 +28,7 @@ export default function KanbanCard({
   assignee,
   leader
 }: KanbanCardProps) {
+
   const { permissions } = useAuth();
 
   const canEditTask = permissions.includes("edit_task");
@@ -38,7 +39,9 @@ export default function KanbanCard({
 
   const completedSubtasks =
     task.subtasks?.filter((s: any) => s.completed).length || 0;
+
   const totalSubtasks = task.subtasks?.length || 0;
+
   const isComplete =
     totalSubtasks > 0 && completedSubtasks === totalSubtasks;
 
@@ -57,31 +60,39 @@ export default function KanbanCard({
           onEdit(task);
         }
       }}
-
       className={`bg-white dark:bg-slate-900 p-3 mb-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group relative ${
         canDrag
           ? "cursor-grab active:cursor-grabbing"
           : "cursor-default opacity-95"
       }`}
     >
+
+      {/* ================= HEADER ================= */}
       <div className="flex justify-between items-start mb-2">
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5 items-center">
+
+          {/* Priority Badge */}
           <span
             className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${p.bg} ${p.color}`}
           >
             {p.label}
           </span>
 
+          {/* Leader Badge */}
           {leader && (
-            <span className="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded text-[8px] font-black uppercase flex items-center gap-1">
+            <span
+              title={`Leader: ${leader.name}`}
+              className="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded text-[8px] font-black uppercase flex items-center gap-1"
+            >
               <ShieldCheck size={10} />
             </span>
           )}
         </div>
 
-        {/* ✅ Logic: Show action buttons only if user has specific permissions */}
+        {/* Action Buttons (Permission Based) */}
         {(canEditTask || canDeleteTask) && (
           <div className="flex gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+            
             {canEditTask && (
               <button
                 onClick={(e) => {
@@ -109,12 +120,14 @@ export default function KanbanCard({
         )}
       </div>
 
-      {/* ✅ Tightened typography for a smaller footprint */}
+      {/* ================= TITLE ================= */}
       <p className="text-[11px] font-bold text-slate-800 dark:text-slate-100 mb-2 uppercase leading-snug line-clamp-2">
         {task.title}
       </p>
 
+      {/* ================= SUBTASK + COMMENT INFO ================= */}
       <div className="flex gap-3 mb-2">
+
         {totalSubtasks > 0 && (
           <div
             className={`flex items-center gap-1 text-[9px] font-bold ${
@@ -136,12 +149,15 @@ export default function KanbanCard({
         )}
       </div>
 
+      {/* ================= FOOTER ================= */}
       <div className="flex justify-between items-center pt-2 border-t border-slate-50 dark:border-slate-800/50">
+        
+        {/* Task ID */}
         <span className="text-[8px] font-mono text-slate-400 dark:text-slate-600 tracking-tighter">
           #{String(task.id).slice(-4).toUpperCase()}
         </span>
 
-        {/* ✅ Assignee display logic */}
+        {/* Assignee Avatar */}
         <div className="flex -space-x-1.5">
           {assignee ? (
             <div
@@ -149,13 +165,20 @@ export default function KanbanCard({
               title={`Assignee: ${assignee.name}`}
             >
               {assignee.avatar ? (
-                <img src={assignee.avatar} alt={assignee.name} className="w-full h-full object-cover" />
+                <img
+                  src={assignee.avatar}
+                  alt={assignee.name}
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 assignee.name.charAt(0)
               )}
             </div>
           ) : (
-            <div className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 border border-white dark:border-slate-900">
+            <div
+              title="Unassigned"
+              className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 border border-white dark:border-slate-900"
+            >
               <UserIcon size={10} />
             </div>
           )}
@@ -163,4 +186,4 @@ export default function KanbanCard({
       </div>
     </div>
   );
-}
+} 

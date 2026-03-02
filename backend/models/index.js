@@ -35,7 +35,16 @@ Project.belongsTo(User, { foreignKey: "userId" });
 
 Project.hasMany(Task, { foreignKey: "projectId", onDelete: "CASCADE" });
 Task.belongsTo(Project, { foreignKey: "projectId" });
+// 🔥 ADD THIS
+Task.belongsTo(User, {
+  foreignKey: "assigneeId",
+  as: "assignee"
+});
 
+User.hasMany(Task, {
+  foreignKey: "assigneeId",
+  as: "assignedTasks"
+});
 module.exports = {
   sequelize,
   User,

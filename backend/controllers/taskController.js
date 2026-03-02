@@ -1,4 +1,4 @@
-const { Task, Project } = require("../models");
+const { Task, Project, User } = require("../models");
 const { Op } = require("sequelize");
 
 /* =============================================================
@@ -8,22 +8,26 @@ exports.searchTasks = async (req, res, next) => {
   try {
     const q = req.query.q || "";
 
-    // ✅ Security check: Only return tasks the user has access to
     const tasks = await Task.findAll({
       where: {
-        title: {
-          [Op.iLike]: `%${q}%` // Case-insensitive search for Postgres
-        },
+        title: { [Op.iLike]: `%${q}%` },
         [Op.or]: [
-          { assigneeId: req.user.id }, // ✅ Matches Task model field 'assigneeId'
-          { '$Project.userId$': req.user.id } // ✅ Matches Project model field 'userId'
+          { assigneeId: req.user.id },
+          { "$Project.userId$": req.user.id }
         ]
       },
-      include: [{
-        model: Project,
-        attributes: ['userId', 'name']
-      }],
-      order: [["createdAt", "DESC"]], // ✅ Matches pgAdmin camelCase 'createdAt'
+      include: [
+        {
+          model: Project,
+          attributes: ["userId", "name"]
+        },
+        {
+          model: User,
+          as: "assignee",
+          attributes: ["id", "username", "firstName", "lastName"]
+        }
+      ],
+      order: [["createdAt", "DESC"]],
     });
 
     res.json(tasks);
@@ -32,6 +36,7 @@ exports.searchTasks = async (req, res, next) => {
     next(err);
   }
 };
+
 
 /* =============================================================
    CREATE TASK
@@ -89,29 +94,22 @@ exports.getTasksForProject = async (req, res, next) => {
     }
 
     const project = await Project.findByPk(projectId);
-
     if (!project) {
       return res.status(404).json({ message: "Project not found" });
     }
 
-    // ✅ Check access based on ownership (userId) or assignment (assigneeId)
-    if (Number(project.userId) !== Number(req.user.id)) {
-      const assigned = await Task.findOne({
-        where: {
-          projectId: projectId,
-          assigneeId: req.user.id
-        }
-      });
-
-      if (!assigned) {
-        return res.status(403).json({ message: "Access denied" });
-      }
-    }
-
     const tasks = await Task.findAll({
-      where: { projectId: projectId },
-      order: [["createdAt", "DESC"]], // ✅ Matches pgAdmin camelCase
+      where: { projectId },
+      include: [
+        {
+          model: User,
+          as: "assignee",
+          attributes: ["id", "username", "firstName", "lastName"]
+        }
+      ],
+      order: [["createdAt", "DESC"]],
     });
+
     res.json(tasks);
   } catch (err) {
     console.error("Get Project Tasks Error:", err);
@@ -180,10 +178,11 @@ exports.deleteTask = async (req, res, next) => {
     const task = await Task.findByPk(id);
     if (!task) return res.status(404).json({ message: "Task not found" });
     
-    await task.destroy(); // ✅ Removes record from 'Tasks' table
+    await task.destroy(); 
     res.json({ message: "Task deleted successfully" });
   } catch (err) {
     console.error("Delete Task Error:", err);
     next(err);
   }
 };
+// ✅ Removes record from 'Tasks' table

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getUsers, updateUserRole } from "../services/userService";
 import { getRolesWithPermissions, getAllPermissions, updateRolePermissions } from "../services/roleService";
-import { Shield, Users, Lock, Settings } from "lucide-react";
+import { Shield, Users, Lock, ChevronDown, ChevronUp, Layers } from "lucide-react";
 import { toast } from "react-toastify";
 
 export default function AdminPage() {
@@ -9,6 +9,9 @@ export default function AdminPage() {
   const [roles, setRoles] = useState<any[]>([]);
   const [permissions, setPermissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Track which role cards are expanded
+  const [expandedRoles, setExpandedRoles] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     loadInitialData();
@@ -25,12 +28,26 @@ export default function AdminPage() {
       setUsers(userData);
       setRoles(roleData);
       setPermissions(permData);
+      
+      // Default: Expand the first role, collapse others
+      const initialExpandedState: Record<number, boolean> = {};
+      roleData.forEach((r: any, index: number) => {
+        initialExpandedState[r.id] = index === 0;
+      });
+      setExpandedRoles(initialExpandedState);
     } catch (err) {
       toast.error("Critical: Failed to load administrative modules.");
     } finally {
       setLoading(false);
     }
   }
+
+  const toggleRoleExpand = (roleId: number) => {
+    setExpandedRoles(prev => ({
+      ...prev,
+      [roleId]: !prev[roleId]
+    }));
+  };
 
   const handleRoleChange = async (userId: number, roleId: number) => {
     try {
@@ -44,14 +61,13 @@ export default function AdminPage() {
 
   const handlePermissionToggle = async (roleId: number, permId: number, isAssigned: boolean, rolePerms: any[]) => {
     try {
-      // Calculate new permission set
       const updatedPermIds = isAssigned
         ? rolePerms.filter((p: any) => p.id !== permId).map((p: any) => p.id)
         : [...rolePerms.map((p: any) => p.id), permId];
 
       await updateRolePermissions(roleId, updatedPermIds);
       toast.success("Permissions synchronized");
-      loadInitialData(); // Refresh UI to show updated state
+      loadInitialData();
     } catch (err) {
       toast.error("Failed to modify role permissions");
     }
@@ -118,37 +134,80 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {roles.map((role) => (
-            <div key={role.id} className="bg-white dark:bg-slate-900 p-10 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl">
-              <div className="flex justify-between items-center mb-8">
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-6 bg-indigo-600 rounded-full"></div>
-                  <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">{role.name} Capabilities</h3>
+        {/* Roles & Permissions Section Header */}
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+          <div className="flex items-center gap-3">
+            <Layers size={20} className="text-indigo-600" />
+            <h2 className="text-lg font-black uppercase tracking-widest text-slate-900 dark:text-white">Role Hierarchy</h2>
+          </div>
+          <button 
+            onClick={() => {
+              const allCollapsed = Object.values(expandedRoles).every(v => v === false);
+              const newState: Record<number, boolean> = {};
+              roles.forEach(r => newState[r.id] = allCollapsed);
+              setExpandedRoles(newState);
+            }}
+            className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-500 transition-colors"
+          >
+            {Object.values(expandedRoles).every(v => v === true) ? "Collapse All" : "Expand All"}
+          </button>
+        </div>
+
+        {/* KEY CHANGE: Added "items-start" to the grid container */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+          {roles.map((role) => {
+            const isOpen = expandedRoles[role.id];
+            return (
+              <div key={role.id} className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden transition-all duration-300">
+                {/* Accordion Header */}
+                <div 
+                  onClick={() => toggleRoleExpand(role.id)}
+                  className="flex justify-between items-center p-8 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-6 bg-indigo-600 rounded-full"></div>
+                    <div>
+                      <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">{role.name}</h3>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                        {role.Permissions?.length || 0} active permissions
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    {role.is_system && <Lock size={16} className="text-slate-300" />}
+                    <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500">
+                      {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                    </div>
+                  </div>
                 </div>
-                {role.is_system && <Lock size={16} className="text-slate-300" />}
+                
+                {/* Collapsible Content */}
+                <div className={`transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[1000px] opacity-100 p-10 pt-0' : 'max-h-0 opacity-0 pointer-events-none'}`}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-slate-100 dark:border-slate-800 pt-8">
+                    {permissions.map((perm) => {
+                      const isAssigned = role.Permissions?.some((p: any) => p.id === perm.id);
+                      return (
+                        <label key={perm.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer ${isAssigned ? 'bg-indigo-50/50 dark:bg-indigo-500/5 border-indigo-200 dark:border-indigo-500/20' : 'border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40'}`}>
+                          <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tighter">
+                            {perm.name.replace(/_/g, " ")}
+                          </span>
+                          <input 
+                            type="checkbox" 
+                            checked={isAssigned}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              handlePermissionToggle(role.id, perm.id, isAssigned, role.Permissions || []);
+                            }}
+                            className="w-5 h-5 rounded-lg text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-700 dark:bg-slate-800" 
+                          />
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {permissions.map((perm) => {
-                  const isAssigned = role.Permissions?.some((p: any) => p.id === perm.id);
-                  return (
-                    <label key={perm.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer ${isAssigned ? 'bg-indigo-50/50 dark:bg-indigo-500/5 border-indigo-200 dark:border-indigo-500/20' : 'border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40'}`}>
-                      <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tighter">
-                        {perm.name.replace(/_/g, " ")}
-                      </span>
-                      <input 
-                        type="checkbox" 
-                        checked={isAssigned}
-                        onChange={() => handlePermissionToggle(role.id, perm.id, isAssigned, role.Permissions || [])}
-                        className="w-5 h-5 rounded-lg text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-700 dark:bg-slate-800" 
-                      />
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
