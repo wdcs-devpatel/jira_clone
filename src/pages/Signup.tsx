@@ -2,6 +2,7 @@ import { useState, ChangeEvent, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { registerUser } from "../services/authService";
+import { useAuth } from "../context/AuthContext"; // ✅ Added to check auth status
 import {
   UserPlus,
   ArrowLeft
@@ -19,6 +20,7 @@ interface SignupForm {
 
 export default function Signup() {
   const navigate = useNavigate();
+  const { token } = useAuth(); // ✅ Determine if an Admin is logged in
 
   const [form, setForm] = useState<SignupForm>({
     firstName: "",
@@ -57,8 +59,11 @@ export default function Signup() {
         password: form.password
       });
 
-      toast.success("Registration successful! You are assigned as Dev.");
-      navigate("/");
+      // ✅ Adaptive success message
+      toast.success(token ? "Personnel registered successfully!" : "Registration successful! You are assigned as Dev.");
+      
+      // ✅ If Admin is logged in, go back to Admin page, else go to login/home
+      navigate(token ? "/admin" : "/");
 
     } catch (err: any) {
       setError(err.response?.data?.message || "Signup failed.");
@@ -73,8 +78,9 @@ export default function Signup() {
 
         <div className="text-center mb-8 relative">
           <button
-            onClick={() => navigate("/")}
-            className="absolute left-0 top-0 p-2 rounded-xl bg-slate-100 dark:bg-slate-700"
+            type="button"
+            onClick={() => navigate(-1)} // ✅ FIXED: Goes back to the previous page (Admin or Home)
+            className="absolute left-0 top-0 p-3 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
           >
             <ArrowLeft size={18} />
           </button>
@@ -84,11 +90,11 @@ export default function Signup() {
           </div>
 
           <h2 className="text-4xl font-black text-slate-900 dark:text-white uppercase">
-            Join Team
+            {token ? "Create Personnel" : "Join Team"} {/* ✅ Dynamic Title */}
           </h2>
 
           <p className="text-xs text-slate-500 mt-2 uppercase tracking-widest">
-            All new users are assigned as Developer
+            {token ? "Register a new member to the organization" : "All new users are assigned as Developer"}
           </p>
         </div>
 
@@ -98,7 +104,7 @@ export default function Signup() {
             <input
               name="firstName"
               placeholder="First Name"
-              className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border outline-none"
+              className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
               value={form.firstName}
               onChange={handleChange}
               required
@@ -107,7 +113,7 @@ export default function Signup() {
             <input
               name="lastName"
               placeholder="Last Name"
-              className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border outline-none"
+              className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
               value={form.lastName}
               onChange={handleChange}
               required
@@ -117,8 +123,8 @@ export default function Signup() {
           <input
             type="email"
             name="email"
-            placeholder="Email"
-            className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border outline-none"
+            placeholder="Email Address"
+            className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
             value={form.email}
             onChange={handleChange}
             required
@@ -127,7 +133,7 @@ export default function Signup() {
           <input
             name="username"
             placeholder="Username"
-            className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border outline-none"
+            className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
             value={form.username}
             onChange={handleChange}
             required
@@ -135,8 +141,8 @@ export default function Signup() {
 
           <input
             name="phone"
-            placeholder="Phone"
-            className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border outline-none"
+            placeholder="Phone Number (Optional)"
+            className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
             value={form.phone}
             onChange={handleChange}
           />
@@ -146,7 +152,7 @@ export default function Signup() {
               type="password"
               name="password"
               placeholder="Password"
-              className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border outline-none"
+              className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
               value={form.password}
               onChange={handleChange}
               required
@@ -156,7 +162,7 @@ export default function Signup() {
               type="password"
               name="confirmPassword"
               placeholder="Confirm Password"
-              className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border outline-none"
+              className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
               value={form.confirmPassword}
               onChange={handleChange}
               required
@@ -164,17 +170,17 @@ export default function Signup() {
           </div>
 
           {error && (
-            <p className="text-red-500 font-bold text-center text-sm">
+            <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl text-red-500 font-bold text-center text-sm">
               {error}
-            </p>
+            </div>
           )}
 
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black py-4 rounded-2xl uppercase tracking-widest"
+            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black py-4 rounded-2xl uppercase tracking-widest shadow-lg shadow-indigo-500/25 transition-all active:scale-95 disabled:opacity-50"
           >
-            {isLoading ? "Creating User..." : "Create Account"}
+            {isLoading ? "Processing..." : token ? "Register Personnel" : "Create Account"}
           </button>
 
         </form>

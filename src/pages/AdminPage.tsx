@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom"; // ✅ Added for navigation
 import { getUsers, updateUserRole, getProfile } from "../services/userService";
 import {
   getRolesWithPermissions,
@@ -14,12 +15,14 @@ import {
   Layers,
   AlertCircle,
   Eye,
-  EyeOff
+  EyeOff,
+  UserPlus // ✅ Icon for the create button
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useAuth } from "../context/AuthContext";
 
 export default function AdminPage() {
+  const navigate = useNavigate(); // ✅ Initialize navigate hook
   const { user, permissions, updateUser } = useAuth();
 
   const [users, setUsers] = useState<any[]>([]);
@@ -53,7 +56,6 @@ export default function AdminPage() {
       setUsers(userData);
       setRoles(roleData);
       
-      // 🔥 UPDATED: Only filter out 'view_dashboard'. 'view_users' is now included.
       const filteredPerms = permData.filter((p: any) => 
         p.name !== "view_dashboard"
       );
@@ -152,16 +154,27 @@ export default function AdminPage() {
       <div className="max-w-7xl mx-auto space-y-12">
 
         {/* HEADER */}
-        <div className="flex items-center gap-5">
-          <div className="p-4 bg-indigo-600 rounded-[1.5rem] text-white shadow-2xl shadow-indigo-500/20">
-            <Shield size={32} />
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-center gap-5">
+            <div className="p-4 bg-indigo-600 rounded-[1.5rem] text-white shadow-2xl shadow-indigo-500/20">
+              <Shield size={32} />
+            </div>
+            <div>
+              <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                Management Console
+              </h1>
+              <p className="text-slate-500 font-medium italic">RBAC Engine & System Hierarchy</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
-              Management Console
-            </h1>
-            <p className="text-slate-500 font-medium italic">RBAC Engine & System Hierarchy</p>
-          </div>
+
+          {/* ✅ NEW: Create Personnel Button */}
+          <button 
+            onClick={() => navigate("/signup")}
+            className="flex items-center gap-3 bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-500/25 transition-all active:scale-95"
+          >
+            <UserPlus size={18} />
+            Create Personnel
+          </button>
         </div>
 
         {/* USERS TABLE */}
