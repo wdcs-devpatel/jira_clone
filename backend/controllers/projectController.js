@@ -22,12 +22,14 @@ exports.createProject = async (req, res, next) => {
 
 /**
  * GET ALL PROJECTS
- * 🔥 ADMIN: returns ALL projects in the system.
+ * Standardized Admin detection for global oversight.
  */
 exports.getProjects = async (req, res, next) => {
   try {
-    // ✅ Updated check
-    const isAdmin = req.user.role === "Admin";
+    // ✅ Standardized Admin Check
+    const isAdmin =
+      req.user.role === "Admin" ||
+      req.user.permissions?.includes("view_admin_panel");
 
     if (isAdmin) {
       const allProjects = await Project.findAll({
@@ -80,8 +82,11 @@ exports.getProject = async (req, res, next) => {
       return res.status(404).json({ message: "Project not found" });
     }
 
-    // 🔥 ADMIN BYPASS - Updated check
-    const isAdmin = req.user.role === "Admin";
+    // ✅ Standardized Admin Check
+    const isAdmin =
+      req.user.role === "Admin" ||
+      req.user.permissions?.includes("view_admin_panel");
+
     if (isAdmin) {
       return res.json(project);
     }
@@ -91,7 +96,7 @@ exports.getProject = async (req, res, next) => {
       return res.json(project);
     }
 
-    // Allow if assigned to a task within the project
+    // Allow if assigned to a task
     const assigned = await Task.findOne({
       where: {
         projectId: project.id,
@@ -114,8 +119,10 @@ exports.getProject = async (req, res, next) => {
  */
 exports.updateProject = async (req, res, next) => {
   try {
-    // ✅ Updated check
-    const isAdmin = req.user.role === "Admin";
+    // ✅ Standardized Admin Check
+    const isAdmin =
+      req.user.role === "Admin" ||
+      req.user.permissions?.includes("view_admin_panel");
     
     const queryCondition = isAdmin 
       ? { id: req.params.id } 
@@ -145,8 +152,10 @@ exports.updateProject = async (req, res, next) => {
  */
 exports.deleteProject = async (req, res, next) => {
   try {
-    // ✅ Updated check
-    const isAdmin = req.user.role === "Admin";
+    // ✅ Standardized Admin Check
+    const isAdmin =
+      req.user.role === "Admin" ||
+      req.user.permissions?.includes("view_admin_panel");
     
     const queryCondition = isAdmin 
       ? { id: req.params.id } 
@@ -177,8 +186,10 @@ exports.addMember = async (req, res, next) => {
     const { userId } = req.body;
     const project = await Project.findByPk(req.params.id);
     
-    // ✅ Updated check
-    const isAdmin = req.user.role === "Admin";
+    // ✅ Standardized Admin Check
+    const isAdmin =
+      req.user.role === "Admin" ||
+      req.user.permissions?.includes("view_admin_panel");
 
     if (!project)
       return res.status(404).json({ message: "Project not found" });
@@ -221,8 +232,10 @@ exports.removeMember = async (req, res, next) => {
     const { id, userId } = req.params;
     const project = await Project.findByPk(id);
     
-    // ✅ Updated check
-    const isAdmin = req.user.role === "Admin";
+    // ✅ Standardized Admin Check
+    const isAdmin =
+      req.user.role === "Admin" ||
+      req.user.permissions?.includes("view_admin_panel");
 
     if (!project) return res.status(404).json({ message: "Project not found" });
 
@@ -244,11 +257,36 @@ exports.removeMember = async (req, res, next) => {
 
 /**
  * GET PROJECT MEMBERS
+ * 🔥 Standardized with Security Logic
  */
 exports.getMembers = async (req, res, next) => {
   try {
     const project = await Project.findByPk(req.params.id);
-    if (!project) return res.status(404).json({ message: "Project not found" });
+
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    // ✅ Standardized Admin Check
+    const isAdmin =
+      req.user.role === "Admin" ||
+      req.user.permissions?.includes("view_admin_panel");
+
+    const isOwner = Number(project.userId) === Number(req.user.id);
+
+    const assigned = await Task.findOne({
+      where: {
+        projectId: project.id,
+        assigneeId: req.user.id
+      }
+    });
+
+    // 🛑 Block access if user is not Admin, Owner, or assigned to a task
+    if (!isAdmin && !isOwner && !assigned) {
+      return res.status(403).json({
+        message: "Access denied: Not part of project"
+      });
+    }
 
     const members = project.members || [];
     const allMembers = [...new Set([project.userId, ...members])];

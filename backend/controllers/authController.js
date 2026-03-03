@@ -10,6 +10,9 @@ const generateTokens = (userId) => {
   return { accessToken, refreshToken };
 };
 
+/* =============================================================
+   USER REGISTRATION
+   ============================================================= */
 exports.register = async (req, res, next) => {
   try {
     const { username, email, password, firstName, lastName, phone, position } = req.body;
@@ -30,7 +33,8 @@ exports.register = async (req, res, next) => {
       firstName,
       lastName,
       phone,
-      role_id: assignedRole.id
+      role_id: assignedRole.id,
+      isActive: true // ✅ Ensure new users are active by default
     });
 
     res.status(201).json({ message: "Registered", user: { id: user.id, username, role: roleName } });
@@ -39,6 +43,9 @@ exports.register = async (req, res, next) => {
   }
 };
 
+/* =============================================================
+   USER LOGIN
+   ============================================================= */
 exports.login = async (req, res, next) => {
   try {
     const { identifier, password } = req.body;
@@ -51,16 +58,27 @@ exports.login = async (req, res, next) => {
       }
     });
 
-    if (!user) return res.status(401).json({ message: "Invalid credentials" });
+    // 1. Identity Check
+    if (!user) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
 
+    // 2. 🔥 STATUS CHECK (CRITICAL)
+    if (!user.isActive) {
+      return res.status(403).json({
+        message: "Account is deactivated. Contact administrator."
+      });
+    }
+
+    // 3. Password Verification
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ message: "Invalid credentials" });
 
+    // 4. Token Generation
     const { accessToken, refreshToken } = generateTokens(user.id);
     user.refreshToken = refreshToken;
     await user.save();
 
-    // ✅ Flatten permissions array for frontend UI gating
     const permissions = user.Role?.Permissions?.map(p => p.name) || [];
 
     res.json({
@@ -71,7 +89,7 @@ exports.login = async (req, res, next) => {
         username: user.username,
         email: user.email,
         Role: user.Role,
-        permissions // e.g., ["view_users", "create_task"]
+        permissions 
       }
     });
   } catch (err) {
@@ -79,6 +97,9 @@ exports.login = async (req, res, next) => {
   }
 };
 
+/* =============================================================
+   REFRESH TOKEN
+   ============================================================= */
 exports.refreshToken = async (req, res) => {
   const { refreshToken } = req.body;
   if (!refreshToken) return res.status(401).json({ message: "No refresh token" });
@@ -90,6 +111,11 @@ exports.refreshToken = async (req, res) => {
     if (!user || user.refreshToken !== refreshToken)
       return res.status(403).json({ message: "Invalid session" });
 
+    // ✅ Refreshing the token also checks for active status
+    if (!user.isActive) {
+      return res.status(403).json({ message: "Account deactivated" });
+    }
+
     const tokens = generateTokens(user.id);
     user.refreshToken = tokens.refreshToken;
     await user.save();
@@ -100,6 +126,9 @@ exports.refreshToken = async (req, res) => {
   }
 };
 
+/* =============================================================
+   LOGOUT
+   ============================================================= */
 exports.logout = async (req, res) => {
   try {
     const { userId } = req.body;

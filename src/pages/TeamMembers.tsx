@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { api } from "../services/authService";
 import { toast } from "react-toastify";
@@ -21,9 +21,8 @@ interface User {
 }
 
 export default function TeamMembers() {
-  const { projectId } = useParams();
+  const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
-  const numericId = Number(projectId);
   const { user: loggedInUser, permissions } = useAuth();
 
   const [allUsers, setAllUsers] = useState<User[]>([]);
@@ -33,35 +32,26 @@ export default function TeamMembers() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // 🔥 Permissions & RBAC
+  const isAdmin = permissions.includes("view_admin_panel");
   const canViewAllUsers = permissions.includes("view_users");
+  const isOwner = Number(loggedInUser?.id) === Number(ownerId);
+  const canManageMembers = isOwner || isAdmin;
 
-
-  useEffect(() => {
-    if (numericId && !isNaN(numericId)) {
-      load();
-    } else {
-      setLoading(false);
-    }
-  }, [projectId, canViewAllUsers]); 
-
-  async function load() {
+  const load = useCallback(async (id: number) => {
     try {
       setLoading(true);
 
-      // 1. Fetch project members and project details
       const [membersRes, projectRes] = await Promise.all([
-        api.get(`/projects/${numericId}/members`),
-        api.get(`/projects/${numericId}`)
+        api.get(`/projects/${id}/members`),
+        api.get(`/projects/${id}`)
       ]);
 
       const fetchedOwnerId = Number(projectRes.data.userId || projectRes.data.ownerId);
       setOwnerId(fetchedOwnerId);
-      
-      // Store IDs of users already in the project
-      const memberIds: number[] = membersRes.data.map((id: any) => Number(id));
+      const memberIds: number[] = membersRes.data.map((mid: any) => Number(mid));
 
-      // 2. Only fetch global users if permissions allow it
-      if (canViewAllUsers) {
+      try {
         const usersRes = await api.get(`/users`);
         const processedUsers = usersRes.data.map((u: any) => ({
           ...u,
@@ -71,15 +61,14 @@ export default function TeamMembers() {
         }));
 
         setAllUsers(processedUsers);
-        
         const currentTeam = processedUsers.filter((u: User) => memberIds.includes(u.id));
         setTeam(currentTeam);
-      } else {
-        setTeam([]); 
+        
+      } catch (err: any) {
+        console.warn("Global users restricted; check RBAC permissions.");
       }
 
     } catch (err: any) {
-      console.error("Load Error:", err);
       if (err.response?.status === 404) {
         toast.error("Project details not found.");
         navigate("/dashboard");
@@ -87,13 +76,21 @@ export default function TeamMembers() {
     } finally {
       setLoading(false);
     }
-  }
- 
+  }, [navigate]);
+
+  useEffect(() => {
+    if (!projectId) return;
+    const id = Number(projectId);
+    if (isNaN(id)) return;
+    load(id);
+  }, [projectId, permissions, load]); 
+
   async function addMember(userId: number) {
+    const id = Number(projectId);
     try {
-      await api.post(`/projects/${numericId}/members`, { userId });
+      await api.post(`/projects/${id}/members`, { userId });
       toast.success("Team member added");
-      await load(); 
+      await load(id); 
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to add member");
     }
@@ -101,18 +98,17 @@ export default function TeamMembers() {
 
   async function removeMember(e: React.MouseEvent, userId: number) {
     e.stopPropagation(); 
+    const id = Number(projectId);
     if (!window.confirm("Remove this member from the project?")) return;
 
     try {
-      await api.delete(`/projects/${numericId}/members/${userId}`);
+      await api.delete(`/projects/${id}/members/${userId}`);
       toast.success("Member removed");
-      await load(); 
+      await load(id); 
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to remove member");
     }
   }
-
-  const isOwner = Number(loggedInUser?.id) === Number(ownerId);
 
   const nonMembers = allUsers.filter(
     u => !team.some(t => Number(t.id) === Number(u.id)) &&
@@ -134,6 +130,7 @@ export default function TeamMembers() {
     <div className="min-h-screen bg-slate-50 dark:bg-[#0b1220] p-6 md:p-10 transition-colors duration-300">
       <div className="max-w-7xl mx-auto space-y-12">
 
+        {/* HEADER SECTION */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <Link to={`/kanban/${projectId}`} className="text-slate-500 hover:text-indigo-500 flex items-center gap-2 mb-4 text-xs font-bold uppercase tracking-widest transition-colors">
@@ -158,7 +155,7 @@ export default function TeamMembers() {
           )}
         </div>
 
-        {/* Current Members Section */}
+        {/* --- CURRENT MEMBERS --- */}
         <section>
           <div className="flex items-center gap-2 mb-8">
             <div className="w-8 h-1 bg-indigo-500 rounded-full"/>
@@ -171,7 +168,7 @@ export default function TeamMembers() {
                 key={u.id}
                 user={u}
                 isLeader={Number(u.id) === Number(ownerId)}
-                canManage={isOwner} 
+                canManage={canManageMembers} 
                 onDetails={()=>setSelectedUser(u)}
                 onRemove={(e: any)=>removeMember(e, u.id)}
               />
@@ -179,7 +176,7 @@ export default function TeamMembers() {
           </div>
         </section>
 
-        {/* Add Talent Section */}
+        {/* --- ADD TALENT --- */}
         {canViewAllUsers && (
           <section>
             <div className="flex items-center gap-2 mb-8">
@@ -198,7 +195,7 @@ export default function TeamMembers() {
                     </div>
                   </div>
                   
-                  {isOwner && (
+                  {canManageMembers && (
                     <button 
                       onClick={()=>addMember(user.id)} 
                       className="p-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white rounded-xl transition-all shadow-sm flex-shrink-0"
@@ -220,7 +217,8 @@ export default function TeamMembers() {
   );
 }
 
-/* MEMBER CARD */
+/* --- RE-ADDED STYLED UI COMPONENTS --- */
+
 function MemberCard({user, onDetails, onRemove, isLeader, canManage}: any) {
   return(
     <div onClick={onDetails} className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 cursor-pointer transition-all hover:shadow-xl hover:-translate-y-1 relative">
@@ -228,7 +226,7 @@ function MemberCard({user, onDetails, onRemove, isLeader, canManage}: any) {
         <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${user.name}`} className="w-16 h-16 rounded-2xl shadow-sm" alt="avatar"/>
         <div className="flex-1 overflow-hidden">
           <h3 className="font-black text-slate-800 dark:text-white truncate text-lg">{user.name}</h3>
-          <p className="text-[10px] text-indigo-500 font-black uppercase tracking-widest">{user.position}</p>
+          <p className="text-[10px] text-indigo-500 font-black uppercase tracking-widest">{user.position || 'Developer'}</p>
         </div>
 
         {canManage && !isLeader && (
@@ -258,7 +256,6 @@ function MemberCard({user, onDetails, onRemove, isLeader, canManage}: any) {
   );
 }
 
-/* USER DETAILS MODAL */
 function UserDetails({user}: any) {
   return(
     <div className="p-4">
@@ -266,14 +263,14 @@ function UserDetails({user}: any) {
         <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${user.name}`} className="w-24 h-24 rounded-3xl shadow-md" alt="avatar"/>
         <div>
           <h2 className="text-3xl font-black text-slate-900 dark:text-white truncate">{user.name}</h2>
-          <p className="text-indigo-600 dark:text-indigo-400 font-bold text-sm tracking-wide uppercase">{user.position}</p>
+          <p className="text-indigo-600 dark:text-indigo-400 font-bold text-sm tracking-wide uppercase">{user.position || 'Developer'}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Detail icon={<Mail size={18}/>} label="Email Address" value={user.email||"Not public"}/>
         <Detail icon={<Phone size={18}/>} label="Phone Number" value={user.phone||"Not provided"}/>
-        <Detail icon={<Briefcase size={18}/>} label="Professional Role" value={user.position}/> 
+        <Detail icon={<Briefcase size={18}/>} label="Professional Role" value={user.position || 'Developer'}/> 
         <Detail icon={<UserCircle2 size={18}/>} label="Member ID" value={`MEM-${user.id}`}/>
       </div>
     </div>

@@ -28,7 +28,8 @@ export async function getUsers(): Promise<User[]> {
       id: Number(u.id),
       name: u.firstName || u.lastName 
         ? `${u.firstName || ""} ${u.lastName || ""}`.trim() 
-        : u.username
+        : u.username,
+      isActive: u.isActive // Ensure isActive is mapped for the UI
     }));
   } catch (error: any) {
     console.error("Error fetching users: Check your RBAC permissions.", error);
@@ -56,6 +57,34 @@ export async function updateProfile(profileData: Partial<User>) {
     const res = await api.put("/users/profile", profileData);
     return res.data;
   } catch (error: any) {
+    throw error;
+  }
+}
+
+/**
+ * TOGGLE USER ACTIVE STATUS (Admin Only)
+ * Uses PATCH as it only modifies the isActive boolean.
+ */
+export async function toggleUserStatus(userId: number | string) {
+  try {
+    const res = await api.patch(`/users/${userId}/status`);
+    return res.data;
+  } catch (error: any) {
+    console.error("Failed to toggle user status:", error);
+    throw error;
+  }
+}
+
+/**
+ * DELETE USER (Admin Only)
+ * Permanently removes user from the database.
+ */
+export async function deleteUser(userId: number | string) {
+  try {
+    const res = await api.delete(`/users/${userId}`);
+    return res.data;
+  } catch (error: any) {
+    console.error("Failed to delete user:", error);
     throw error;
   }
 }

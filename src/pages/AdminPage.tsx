@@ -1,6 +1,12 @@
 import { useEffect, useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom"; // ✅ Added for navigation
-import { getUsers, updateUserRole, getProfile } from "../services/userService";
+import { useNavigate } from "react-router-dom";
+import { 
+  getUsers, 
+  updateUserRole, 
+  getProfile, 
+  toggleUserStatus, 
+  deleteUser 
+} from "../services/userService";
 import {
   getRolesWithPermissions,
   getAllPermissions,
@@ -16,13 +22,16 @@ import {
   AlertCircle,
   Eye,
   EyeOff,
-  UserPlus // ✅ Icon for the create button
+  UserPlus,
+  Trash2,
+  UserCheck,
+  UserX
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useAuth } from "../context/AuthContext";
 
 export default function AdminPage() {
-  const navigate = useNavigate(); // ✅ Initialize navigate hook
+  const navigate = useNavigate();
   const { user, permissions, updateUser } = useAuth();
 
   const [users, setUsers] = useState<any[]>([]);
@@ -76,6 +85,37 @@ export default function AdminPage() {
       setLoading(false);
     }
   }
+
+  // ✅ TOGGLE USER STATUS
+  const handleToggleStatus = async (userId: number) => {
+    if (userId === user?.id) {
+      toast.error("You cannot deactivate your own account.");
+      return;
+    }
+    try {
+      await toggleUserStatus(userId);
+      toast.success("User status updated");
+      loadInitialData();
+    } catch (err) {
+      toast.error("Failed to update user status");
+    }
+  };
+
+  // ✅ DELETE USER
+  const handleDeleteUser = async (userId: number) => {
+    if (userId === user?.id) {
+      toast.error("You cannot delete your own account.");
+      return;
+    }
+    if (!window.confirm("Are you sure you want to delete this user? This action is permanent.")) return;
+    try {
+      await deleteUser(userId);
+      toast.success("User deleted successfully");
+      loadInitialData();
+    } catch (err) {
+      toast.error("Failed to delete user");
+    }
+  };
 
   const handleBulkToggle = () => {
     const newState = !allExpanded;
@@ -167,7 +207,6 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* ✅ NEW: Create Personnel Button */}
           <button 
             onClick={() => navigate("/signup")}
             className="flex items-center gap-3 bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-500/25 transition-all active:scale-95"
@@ -191,20 +230,25 @@ export default function AdminPage() {
                     <th className="px-10 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">Identity</th>
                     <th className="px-10 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">Email</th>
                     <th className="px-10 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">Role</th>
-                    <th className="px-10 py-5 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">Action</th>
+                    <th className="px-10 py-5 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {users.map((u) => (
-                    <tr key={u.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
-                      <td className="px-10 py-5 font-bold text-slate-900 dark:text-white">{u.username}</td>
+                    <tr key={u.id} className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors ${!u.isActive ? 'opacity-50' : ''}`}>
+                      <td className="px-10 py-5 font-bold text-slate-900 dark:text-white">
+                        <div className="flex items-center gap-2">
+                          {u.username}
+                          {!u.isActive && <span className="text-[8px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full uppercase">Inactive</span>}
+                        </div>
+                      </td>
                       <td className="px-10 py-5 text-sm text-slate-500 dark:text-slate-400">{u.email}</td>
                       <td className="px-10 py-5">
                         <span className="px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-lg text-[10px] font-black uppercase">
                           {u.Role?.name || "Unassigned"}
                         </span>
                       </td>
-                      <td className="px-10 py-5 text-right">
+                      <td className="px-10 py-5 text-right flex items-center justify-end gap-2">
                         <select
                           value={u.Role?.id}
                           onChange={(e) => handleRoleChange(u.id, Number(e.target.value))}
@@ -214,6 +258,24 @@ export default function AdminPage() {
                             <option key={r.id} value={r.id}>{r.name}</option>
                           ))}
                         </select>
+
+                        {/* ✅ TOGGLE STATUS BUTTON */}
+                        <button 
+                          onClick={() => handleToggleStatus(u.id)}
+                          className={`p-2 rounded-xl transition-all ${u.isActive ? 'text-amber-500 hover:bg-amber-50' : 'text-emerald-500 hover:bg-emerald-50'}`}
+                          title={u.isActive ? "Deactivate" : "Activate"}
+                        >
+                          {u.isActive ? <UserX size={18}/> : <UserCheck size={18}/>}
+                        </button>
+
+                        {/* ✅ DELETE BUTTON */}
+                        <button 
+                          onClick={() => handleDeleteUser(u.id)}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                          title="Delete User"
+                        >
+                          <Trash2 size={18}/>
+                        </button>
                       </td>
                     </tr>
                   ))}

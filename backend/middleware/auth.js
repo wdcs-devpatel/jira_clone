@@ -14,9 +14,9 @@ module.exports = async (req, res, next) => {
 
     const decoded = jwt.verify(token, CONFIG.JWT_SECRET);
 
-    // 🔥 Fetch user WITH fresh permissions
+    // 🔥 Fetch user WITH fresh permissions 
     const user = await User.findByPk(decoded.id, {
-      include: {
+      include: {  
         model: Role,
         include: {
           model: Permission,

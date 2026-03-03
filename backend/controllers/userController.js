@@ -17,7 +17,8 @@ exports.getUsers = async (req, res, next) => {
         "email",
         "firstName",
         "lastName",
-        "phone"
+        "phone",
+        "isActive" // ✅ Included to show status in Admin table
       ]
     });
 
@@ -109,12 +110,7 @@ exports.updateProfile = async (req, res, next) => {
     const userId = req.user.id;
     const { username, email, firstName, lastName, phone } = req.body;
 
-    const user = await User.findByPk(userId, {
-      include: {
-        model: Role,
-        attributes: ["id", "name"]
-      }
-    });
+    const user = await User.findByPk(userId);
 
     if (!user)
       return res.status(404).json({ message: "User not found" });
@@ -178,6 +174,70 @@ exports.updateUserRole = async (req, res, next) => {
 
   } catch (err) {
     console.error("Role Update Error:", err);
+    next(err);
+  }
+};
+
+/* =====================================================
+   ACTIVATE / DEACTIVATE USER (Admin Only)
+===================================================== */
+exports.toggleUserStatus = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+
+    // Security: Prevent self-deactivation
+    if (Number(userId) === Number(req.user.id)) {
+      return res.status(400).json({ 
+        message: "You cannot deactivate your own account" 
+      });
+    }
+
+    const user = await User.findByPk(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.isActive = !user.isActive;
+    await user.save();
+
+    res.json({
+      message: `User ${user.isActive ? "activated" : "deactivated"} successfully`,
+      isActive: user.isActive
+    });
+
+  } catch (err) {
+    console.error("Toggle Status Error:", err);
+    next(err);
+  }
+};
+
+/* =====================================================
+   DELETE USER (Admin Only)
+===================================================== */
+exports.deleteUser = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+
+    // Security: Prevent self-deletion
+    if (Number(userId) === Number(req.user.id)) {
+      return res.status(400).json({
+        message: "You cannot delete your own account"
+      });
+    }
+
+    const user = await User.findByPk(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    await user.destroy();
+
+    res.json({ message: "User deleted successfully" });
+
+  } catch (err) {
+    console.error("Delete User Error:", err);
     next(err);
   }
 };
