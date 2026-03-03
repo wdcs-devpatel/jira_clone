@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const { connectDB, CONFIG } = require("./config/db");
 const { sequelize } = require("./models");
-const initializeRBAC = require("./seeders/initRBAC"); // 🔥 Import Seeder
+const initializeRBAC = require("./seeders/initRBAC"); 
 
 const taskRoutes = require("./routes/taskRoutes");
 const projectRoutes = require("./routes/projectRoutes");
@@ -30,7 +30,7 @@ const startServer = async () => {
   try {
     await connectDB();
     await sequelize.sync(); 
-    await initializeRBAC(); // 🔥 Run Seeder after sync
+    await initializeRBAC(); 
     console.log("Database synced & RBAC Initialized");
 
     app.listen(CONFIG.PORT, () => {
