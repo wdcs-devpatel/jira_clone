@@ -1,79 +1,115 @@
-import axios from "axios";
+import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+/* ==============================
+   ENV CONFIG
+============================== */
+// ✅ Fixed: This service now strictly points to the Postgres API for Auth & Users
+const BASE_URL = import.meta.env.VITE_POSTGRES_API || "http://localhost:5000/api";
 const AUTH_URL = `${BASE_URL}/auth`;
 
 /* ==============================
-   AXIOS INSTANCE
+   AXIOS INSTANCE (Postgres Only)
 ============================== */
 export const api = axios.create({
   baseURL: BASE_URL,
+  withCredentials: false, 
 });
 
 /* ==============================
    REQUEST INTERCEPTOR
 ============================== */
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("accessToken");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+api.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    const token = localStorage.getItem("accessToken");
+
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 /* ==============================
-   AUTO REFRESH & ERROR HANDLING
+   RESPONSE INTERCEPTOR
+   Handles:
+   - Auto refresh token via Postgres Auth server
+   - Safe logout on session failure
 ============================== */
 api.interceptors.response.use(
-  (res) => res,
-  async (err) => {
-    const originalRequest = err.config;
+  (response) => response,
+  async (error: AxiosError<any>) => {
+    const originalRequest: any = error.config;
 
-    // Handle Token Expiration
-    if (err.response?.status === 401 && !originalRequest._retry) {
+    if (!originalRequest) {
+      return Promise.reject(error);
+    }
+
+    /* ------------------------------
+       TOKEN EXPIRED (401)
+    ------------------------------ */
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !originalRequest.url?.includes("/auth/refresh")
+    ) {
       originalRequest._retry = true;
 
       try {
         const refreshToken = localStorage.getItem("refreshToken");
-        if (!refreshToken) throw new Error("No refresh token");
+        if (!refreshToken) throw new Error("No refresh token available");
 
-        const refreshRes = await axios.post(`${AUTH_URL}/refresh`, {
-          refreshToken
+        // Use standard axios for the refresh call to avoid interceptor loops
+        const refreshResponse = await axios.post(`${AUTH_URL}/refresh`, {
+          refreshToken,
         });
 
-        const { accessToken, refreshToken: newRefresh } = refreshRes.data;
+        const { accessToken, refreshToken: newRefreshToken } =
+          refreshResponse.data;
 
+        // Save new tokens locally
         localStorage.setItem("accessToken", accessToken);
-        localStorage.setItem("refreshToken", newRefresh);
+        localStorage.setItem("refreshToken", newRefreshToken);
 
+        // Retry the original request with the new Postgres token
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        return api.request(originalRequest);
-
+        return api(originalRequest);
       } catch (refreshError) {
-        // ✅ Clear everything on failure to prevent 403 loops
+        console.error("Refresh token failed. Logging out...");
+
         localStorage.clear();
         window.location.href = "/";
         return Promise.reject(refreshError);
       }
     }
 
-    // ✅ Log 403 errors specifically for RBAC debugging
-    if (err.response?.status === 403) {
-      console.error("RBAC Forbidden: User lacks required permissions for this action.");
+    /* ------------------------------
+       RBAC FORBIDDEN (403)
+    ------------------------------ */
+    if (error.response?.status === 403) {
+      console.error(
+        "RBAC Forbidden: User lacks required permissions for this action on the Postgres server."
+      );
     }
 
-    return Promise.reject(err);
+    return Promise.reject(error);
   }
 );
 
 /* ==============================
-   AUTH ACTIONS
+   AUTH ACTIONS (Postgres Backend)
 ============================== */
-export const loginUser = async (identifier: string, password: string) => {
+
+export const loginUser = async (
+  identifier: string,
+  password: string
+) => {
   const res = await axios.post(`${AUTH_URL}/login`, {
     identifier,
-    password
+    password,
   });
+
   return res.data;
 };
 
@@ -90,6 +126,7 @@ export const registerUser = async (userData: {
 };
 
 export const logoutUser = () => {
-  localStorage.clear();
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
   window.location.href = "/";
 };

@@ -7,15 +7,21 @@ const { Op } = require("sequelize");
 
 /**
  * CREATE PROJECT
+ * ✅ FIXED: Explicitly assigns the creator as the teamLeader for security.
  */
 exports.createProject = async (req, res, next) => {
   try {
     const project = await Project.create({
-      ...req.body,
-      userId: req.user.id 
+      name: req.body.name,
+      description: req.body.description,
+      priority: req.body.priority,
+      userId: req.user.id,
+      teamLeader: req.user.username // ✅ Backend enforced: Creator always becomes team lead
     });
+
     res.status(201).json(project);
   } catch (err) {
+    console.error("Create Project Error:", err);
     next(err);
   }
 };

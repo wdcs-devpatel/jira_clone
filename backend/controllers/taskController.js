@@ -7,13 +7,12 @@ const { Op } = require("sequelize");
 exports.searchTasks = async (req, res, next) => {
   try {
     const q = req.query.q || "";
-    const isAdmin = req.user.role === "Admin"; // ✅ Updated direct check
+    const isAdmin = req.user.role === "Admin"; 
 
     const whereCondition = {
       title: { [Op.iLike]: `%${q}%` }
     };
 
-    // 🔥 FIX: ONLY filter for non-admins. Admins search everything.
     if (!isAdmin) {
       whereCondition[Op.or] = [
         { assigneeId: req.user.id },
@@ -44,14 +43,13 @@ exports.searchTasks = async (req, res, next) => {
   }
 };
 
-
 /* =============================================================
    CREATE TASK
    ============================================================= */
 exports.createTask = async (req, res, next) => {
   try {
     const { projectId } = req.params;
-    const isAdmin = req.user.role === "Admin"; // ✅ Updated direct check
+    const isAdmin = req.user.role === "Admin"; 
 
     if (!projectId || isNaN(projectId)) {
       return res.status(400).json({ message: "Valid Project ID is required" });
@@ -63,7 +61,6 @@ exports.createTask = async (req, res, next) => {
       return res.status(404).json({ message: "Project not found" });
     }
 
-    // ✅ Admin Override: Bypass ownership/assignment check
     if (!isAdmin && Number(project.userId) !== Number(req.user.id)) {
       const assigned = await Task.findOne({
         where: {
@@ -125,12 +122,48 @@ exports.getTasksForProject = async (req, res, next) => {
 };
 
 /* =============================================================
+   GET SINGLE TASK (NEWLY ADDED)
+============================================================= */
+exports.getTaskById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ message: "Invalid Task ID" });
+    }
+
+    const task = await Task.findByPk(id, {
+      include: [
+        {
+          model: User,
+          as: "assignee",
+          attributes: ["id", "username", "firstName", "lastName"]
+        },
+        {
+          model: Project,
+          attributes: ["id", "name", "userId"]
+        }
+      ]
+    });
+
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    res.json(task);
+  } catch (err) {
+    console.error("Get Task Error:", err);
+    next(err);
+  }
+};
+
+/* =============================================================
    UPDATE TASK
    ============================================================= */
 exports.updateTask = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const isAdmin = req.user.role === "Admin"; // ✅ Updated direct check
+    const isAdmin = req.user.role === "Admin"; 
 
     if (!id || isNaN(id) || id === "NaN") {
       return res.status(400).json({ message: "Invalid Task ID provided" });
@@ -142,7 +175,6 @@ exports.updateTask = async (req, res, next) => {
 
     if (!task) return res.status(404).json({ message: "Task not found" });
     
-    // ✅ Admin Override: Allow update for Admin, Assignee, or Project Owner
     if (!isAdmin && 
         Number(task.assigneeId) !== Number(req.user.id) && 
         Number(task.Project?.userId) !== Number(req.user.id)) {
@@ -163,7 +195,7 @@ exports.updateTask = async (req, res, next) => {
 exports.updateTaskStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const isAdmin = req.user.role === "Admin"; // ✅ Updated direct check
+    const isAdmin = req.user.role === "Admin"; 
 
     if (!id || isNaN(id)) {
       return res.status(400).json({ message: "Invalid Task ID" });
@@ -175,7 +207,6 @@ exports.updateTaskStatus = async (req, res, next) => {
 
     if (!task) return res.status(404).json({ message: "Task not found" });
 
-    // ✅ Admin Override: Allow status change for Admin, Assignee, or Project Owner
     if (!isAdmin && 
         Number(task.assigneeId) !== Number(req.user.id) && 
         Number(task.Project?.userId) !== Number(req.user.id)) {
@@ -197,7 +228,7 @@ exports.updateTaskStatus = async (req, res, next) => {
 exports.deleteTask = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const isAdmin = req.user.role === "Admin"; // ✅ Updated direct check
+    const isAdmin = req.user.role === "Admin"; 
 
     if (!id || isNaN(id)) {
       return res.status(400).json({ message: "Invalid Task ID" });
@@ -209,7 +240,6 @@ exports.deleteTask = async (req, res, next) => {
 
     if (!task) return res.status(404).json({ message: "Task not found" });
 
-    // ✅ Admin Override: Only Admins or Project Owners can delete tasks
     if (!isAdmin && Number(task.Project?.userId) !== Number(req.user.id)) {
       return res.status(403).json({ message: "Only Admins or Project Owners can delete tasks" });
     }

@@ -11,6 +11,8 @@ export interface Project {
   userId?: number;
   createdAt?: string;
   updatedAt?: string;
+    teamLeaderId?: number;   // ✅ add this
+
 }
 
 /**

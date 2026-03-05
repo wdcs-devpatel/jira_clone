@@ -6,6 +6,7 @@ const requirePermission = require("../middleware/requirePermission");
 const {
   createTask,
   getTasksForProject,
+  getTaskById, // ✅ Imported newly added function
   updateTask,
   updateTaskStatus,
   deleteTask,
@@ -25,6 +26,9 @@ router.get("/search", searchTasks);
 // Get tasks associated with a specific project
 router.get("/project/:projectId", getTasksForProject);
 
+// Get a single task by ID (Added above ACTION routes)
+router.get("/:id", getTaskById);
+
 /* ==============================
    ACTION ROUTES (CRUD)
 ============================== */
@@ -32,7 +36,7 @@ router.get("/project/:projectId", getTasksForProject);
 // Create: Requires 'create_task' permission
 router.post("/project/:projectId", requirePermission("create_task"), createTask);
 
-// Update: Requires 'edit_task' permission. Note use of ':id'
+// Update: Requires 'edit_task' permission
 router.put("/:id", requirePermission("edit_task"), updateTask);
 
 // Status Patch: Specific for Kanban Drag & Drop

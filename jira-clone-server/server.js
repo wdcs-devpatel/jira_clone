@@ -3,33 +3,30 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const path = require("path");
 const connectDB = require("./config/db");
-const taskRoutes = require("./routes/taskRoutes");
+// ✅ Removed taskRoutes
+const attachmentRoutes = require("./routes/attachmentRoutes");
 
-// Load environment variables
 dotenv.config();
 
-// Connect to MongoDB
+// Connect to MongoDB Atlas
 connectDB();
 
 const app = express();
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// 🔥 Serve uploaded files
+// ✅ Serves physical files from the uploads folder
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-app.use("/api/tasks", taskRoutes);
+// ✅ NEW: Specialized Attachment Route
+app.use("/api/attachments", attachmentRoutes);
 
-// Test Route
 app.get("/", (req, res) => {
-  res.send("MongoDB Atlas Server Running...");
+  res.send("Jira Clone - MongoDB Attachment Microservice Running...");
 });
 
-// Port
 const PORT = process.env.PORT || 5001;
-
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Attachment Service running on port ${PORT}`);
 });

@@ -4,28 +4,29 @@ import axios from "axios";
 import { ArrowLeft, CheckCircle2, ShieldAlert } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
+// ✅ UPDATED: Importing modified Status and service functions
 import {
   getAllTasks,
   updateTaskStatus,
+  Status
 } from "../services/taskService";
 
 import { getUsers } from "../services/userService";
 import KanbanColumn from "../components/KanbanColumn";
 import { TaskId } from "../interfaces/task/task.interface";
 
-type Status = "todo" | "in-progress" | "done";
-
+// ✅ FIXED: Updated COLUMNS to To Do, In Progress, QA, and Done
 const COLUMNS: { key: Status; title: string }[] = [
-  { key: "todo", title: "To Do" },
-  { key: "in-progress", title: "In Progress" },
-  { key: "done", title: "Done" },
+  { key: "To Do", title: "To Do" },
+  { key: "In Progress", title: "In Progress" },
+  { key: "QA", title: "QA" },
+  { key: "Done", title: "Done" },
 ];
 
 export default function KanbanBoard() {
   const { permissions } = useAuth();
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId: string }>();
-  const numericProjectId = projectId ? Number(projectId) : null;
   
   const [tasks, setTasks] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]); 
@@ -40,29 +41,22 @@ export default function KanbanBoard() {
     if (projectId) {
       localStorage.setItem("currentProjectId", projectId);
       window.dispatchEvent(new Event("storage"));
+      loadInitialData();
     }
   }, [projectId]);
 
-  useEffect(() => {
-    if (numericProjectId !== null && !isNaN(numericProjectId)) {
-      loadInitialData();
-    }
-  }, [numericProjectId]);
-
   async function loadInitialData() {
-    if (numericProjectId === null || isNaN(numericProjectId)) return;
-    
     try {
       setLoading(true);
 
       const memberIdsRes = await axios.get(
-        `${import.meta.env.VITE_API_BASE_URL}/projects/${numericProjectId}/members`,
+        `${import.meta.env.VITE_API_BASE_URL}/projects/${projectId}/members`,
         {
           headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` }
         }
       );
 
-      const memberIds: number[] = memberIdsRes.data;
+      const memberIds: any[] = memberIdsRes.data;
 
       let allUsers: any[] = [];
       if (canViewUsers) {
@@ -73,12 +67,9 @@ export default function KanbanBoard() {
         }
       }
 
-      const sortedUsers = allUsers.sort((a: any, b: any) => {
-        const aIsMember = memberIds.includes(Number(a.id));
-        const bIsMember = memberIds.includes(Number(b.id));
-        if (aIsMember && !bIsMember) return -1;
-        if (!aIsMember && bIsMember) return 1;
-        return 0;
+      const sortedUsers = allUsers.sort((a: any) => {
+        const aId = a._id || a.id;
+        return memberIds.includes(aId) ? -1 : 1;
       });
       
       setUsers(sortedUsers);
@@ -91,9 +82,8 @@ export default function KanbanBoard() {
   }
 
   async function loadTasks() {
-    if (numericProjectId === null || isNaN(numericProjectId)) return;
     try {
-      const fetchedTasks = await getAllTasks(numericProjectId);
+      const fetchedTasks = await getAllTasks(projectId);
       setTasks(fetchedTasks);
     } catch (err) {
       console.error("Load Tasks Error:", err);
@@ -119,8 +109,8 @@ export default function KanbanBoard() {
     const taskId = e.dataTransfer.getData("taskId");
 
     if (taskId) {
-      if (newStatus === "done") {
-        const droppedTask = tasks.find(t => String(t.id) === taskId);
+      if (newStatus === "Done") {
+        const droppedTask = tasks.find(t => String(t._id || t.id) === taskId);
         setDoneNotification(`Nice work! "${droppedTask?.title || 'Task'}" is completed.`);
         setTimeout(() => setDoneNotification(null), 3000);
       }
@@ -134,9 +124,11 @@ export default function KanbanBoard() {
     }
   };
 
-  const handleNavigateToTask = (task: any = null, defaultStatus: Status = "todo") => {
+  // ✅ FIXED: Changed defaultStatus to "To Do"
+  const handleNavigateToTask = (task: any = null, defaultStatus: Status = "To Do") => {
     if (task) {
-      navigate(`/kanban/${projectId}/task/${task.id}`);
+      const id = task._id || task.id;
+      navigate(`/kanban/${projectId}/task/${id}`);
     } else {
       navigate(`/kanban/${projectId}/task/create?status=${defaultStatus}`);
     }
@@ -146,7 +138,7 @@ export default function KanbanBoard() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0b1220]">
         <div className="text-xs font-black uppercase tracking-widest animate-pulse text-indigo-500">
-          Syncing Board...
+          Syncing MongoDB Board...
         </div>
       </div>
     );
@@ -189,8 +181,8 @@ export default function KanbanBoard() {
           </div>
         </div>
 
-        {/* ✅ CLEAN VERSION — No assignee injection here */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* ✅ FIXED: Grid updated to 4 columns (md:grid-cols-4) */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {COLUMNS.map((col) => (
             <div
               key={col.key}

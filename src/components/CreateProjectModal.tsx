@@ -21,7 +21,10 @@ export default function CreateProjectModal({
   const [name, setName] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
-  const [teamLeader, setTeamLeader] = useState<string>(""); 
+  
+  // ✅ FIXED: Using string state for the select element to avoid type mismatch
+  const [teamLeaderId, setTeamLeaderId] = useState<string>("");
+  
   const [managers, setManagers] = useState<UserInterface[]>([]); 
   const [fetchError, setFetchError] = useState<boolean>(false);
 
@@ -31,7 +34,6 @@ export default function CreateProjectModal({
 
   useEffect(() => {
     async function loadManagers() {
-      // ✅ Only attempt fetch if the user has the required 'view_users' permission
       if (!canViewUsers) {
         setFetchError(true);
         return;
@@ -39,10 +41,13 @@ export default function CreateProjectModal({
 
       try {
         const allUsers = await getUsers();
-        // Show users whose role is TL, PM, or Admin for responsibility assignment
+        // ✅ Check if your API uses 'Role' or 'role' if this filter returns empty
         const filtered = allUsers.filter((u: any) =>
-          ["PM", "TL", "Admin"].includes(u.Role?.name)
+          ["PM", "TL", "Admin"].includes(u.Role?.name || u.role?.name)
         );
+        
+        console.log("Managers loaded:", filtered); // 🛠️ Debug log
+        
         setManagers(filtered.length > 0 ? filtered : allUsers);
         setFetchError(false);
       } catch (err: any) {
@@ -58,33 +63,35 @@ export default function CreateProjectModal({
       setName(editingProject.name);
       setDescription(editingProject.description || "");
       setPriority((editingProject.priority as TaskPriority) || "medium");
-      setTeamLeader(editingProject.teamLeader || "");
+      
+      // ✅ Set as string for the dropdown
+      setTeamLeaderId(String(editingProject.teamLeaderId || ""));
     } else {
       setName("");
       setDescription("");
       setPriority("medium");
-      setTeamLeader(user?.username || "");
+      
+      // ✅ Set as string for the dropdown
+      setTeamLeaderId(String(user?.id || ""));
     }
-  }, [editingProject, user, canManage]);
+  }, [editingProject, user]);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     
-    if (!canManage) {
-      return; 
-    }
+    if (!canManage) return; 
 
+    // ✅ FIXED: Casting back to Number for the final payload
     onSaved({ 
       ...(editingProject && { id: editingProject.id }),
       name, 
       description, 
       priority,
-      teamLeader,
+      teamLeaderId: Number(teamLeaderId),
       userId: user?.id 
     });
   }
 
-  // ✅ Gated View: Displays restriction if user lacks create_project permission
   if (!canManage) {
     return (
       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
@@ -112,12 +119,11 @@ export default function CreateProjectModal({
             {editingProject ? "Edit Project" : "Create New Project"}
           </h2>
           <div className="px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-full text-[10px] font-black uppercase tracking-widest">
-            {user?.Role?.name || "Member"}
+            {user?.Role?.name || user?.role?.name || "Member"}
           </div>
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Project Name */}
           <div>
             <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-2 tracking-widest">
               Project Name
@@ -140,21 +146,19 @@ export default function CreateProjectModal({
               <UserCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10" size={18} />
               <select
                 required
-                value={teamLeader}
-                onChange={(e) => setTeamLeader(e.target.value)}
+                value={teamLeaderId}
+                onChange={(e) => setTeamLeaderId(e.target.value)}
                 className="w-full pl-12 pr-10 py-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 outline-none text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer"
               >
+                <option value="">Select a Lead</option>
                 {!fetchError ? (
-                  <>
-                    <option value="" disabled>Select a Lead</option>
-                    {managers.map((m) => (
-                      <option key={m.id} value={m.username}>
-                        {m.firstName} {m.lastName} (@{m.username})
-                      </option>
-                    ))}
-                  </>
+                  managers.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.firstName} {m.lastName} (@{m.username})
+                    </option>
+                  ))
                 ) : (
-                   <option value={user?.username}>{user?.username} (Self)</option>
+                   <option value={String(user?.id)}>{user?.username} (Self)</option>
                 )}
               </select>
               <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
@@ -166,7 +170,6 @@ export default function CreateProjectModal({
             )}
           </div>
 
-          {/* Description */}
           <div>
             <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-2 tracking-widest">
               Project Vision/Description
@@ -178,7 +181,6 @@ export default function CreateProjectModal({
             />
           </div>
 
-          {/* Strategic Priority Grid */}
           <div>
             <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-3 tracking-widest">
               Strategic Priority
