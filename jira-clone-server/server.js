@@ -3,8 +3,10 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const path = require("path");
 const connectDB = require("./config/db");
-// ✅ Removed taskRoutes
+
+// Import Routes
 const attachmentRoutes = require("./routes/attachmentRoutes");
+const activityRoutes = require("./routes/activityRoutes");
 
 dotenv.config();
 
@@ -13,20 +15,22 @@ connectDB();
 
 const app = express();
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-// ✅ Serves physical files from the uploads folder
+// Serve uploaded files - Serves physical files from the uploads folder
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// ✅ NEW: Specialized Attachment Route
+// Route Registration
 app.use("/api/attachments", attachmentRoutes);
+app.use("/api/activity", activityRoutes);
 
 app.get("/", (req, res) => {
-  res.send("Jira Clone - MongoDB Attachment Microservice Running...");
+  res.send("Jira Clone - MongoDB Attachment & Activity Microservice Running...");
 });
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
-  console.log(`Attachment Service running on port ${PORT}`);
+  console.log(`Attachment & Activity Service running on port ${PORT}`);
 });

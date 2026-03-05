@@ -4,20 +4,29 @@ const upload = require("../middleware/upload");
 const {
   uploadAttachment,
   getAttachmentsByTask,
-  deleteAttachment // ✅ NEW: Imported delete function
+  deleteAttachment // ✅ Confirmed: Imported delete function
 } = require("../controllers/attachmentController");
 
-/* ==============================
-   ATTACHMENT ROUTES
-============================== */
+/* =============================================================
+   ATTACHMENT MICROSERVICE ROUTES
+   ============================================================= */
 
-// Create: Upload a new file for a specific task
+/**
+ * CREATE: Upload a new file for a specific task
+ * Expects: Multipart/form-data with key "file"
+ */
 router.post("/:taskId", upload.single("file"), uploadAttachment);
 
-// Read: Get all files associated with a specific task
+/**
+ * READ: Get all files associated with a specific task
+ * Returns: Array of attachment metadata
+ */
 router.get("/:taskId", getAttachmentsByTask);
 
-// ✅ NEW: Delete: Remove a specific file by its MongoDB _id
+/**
+ * DELETE: Remove a specific file and its metadata
+ * Action: Deletes physical file from /uploads and record from MongoDB
+ */
 router.delete("/:id", deleteAttachment);
 
 module.exports = router;

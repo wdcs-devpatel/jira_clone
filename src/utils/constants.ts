@@ -5,7 +5,8 @@ export const API_BASE = "https://dummyjson.com";
    Priority Types
 ======================= */
 
-export type Priority = "high" | "medium" | "low";
+// ✅ Added 'critical' to type
+export type Priority = "critical" | "high" | "medium" | "low";
 
 export interface PriorityConfig {
   label: string;
@@ -21,13 +22,22 @@ export interface PriorityConfig {
 ======================= */
 
 export const PRIORITIES: Record<Priority, PriorityConfig> = {
+  // ✅ NEW: Critical Priority Config
+  critical: {
+    label: "Critical",
+    value: "critical",
+    color: "text-red-700",
+    bg: "bg-red-200",
+    darkBg: "dark:bg-red-900/40",
+    darkText: "dark:text-red-400",
+  },
   high: {
     label: "High",
     value: "high",
-    color: "text-rose-600",
-    bg: "bg-rose-100",
-    darkBg: "dark:bg-rose-500/20",
-    darkText: "dark:text-rose-400",
+    color: "text-orange-600",
+    bg: "bg-orange-100",
+    darkBg: "dark:bg-orange-500/20",
+    darkText: "dark:text-orange-400",
   },
   medium: {
     label: "Medium",
