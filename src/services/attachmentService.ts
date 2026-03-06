@@ -15,6 +15,7 @@ export async function uploadAttachment(taskId: string, file: File) {
     formData,
     {
       headers: {
+        Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         "Content-Type": "multipart/form-data",
       },
     }
@@ -22,7 +23,7 @@ export async function uploadAttachment(taskId: string, file: File) {
 
   return res.data;
 }
-
+  
 /**
  * GET ATTACHMENTS
  * Fetches all attachment metadata associated with a specific taskId.
@@ -30,7 +31,6 @@ export async function uploadAttachment(taskId: string, file: File) {
 export async function getAttachments(taskId: string) {
   const res = await axios.get(
     `${MONGO_API}/attachments/${taskId}`,
-
   );
 
   return res.data;
@@ -43,7 +43,7 @@ export async function getAttachments(taskId: string) {
 export async function deleteAttachment(id: string) {
   const res = await axios.delete(
     `${MONGO_API}/attachments/${id}`,
-
+   
   );
 
   return res.data;

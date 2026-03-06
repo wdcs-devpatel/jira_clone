@@ -12,7 +12,8 @@ import {
   User as UserIcon,
   FileText,
   Edit2,
-  Check
+  Check,
+  Clock 
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useAuth } from "../context/AuthContext";
@@ -22,7 +23,8 @@ import { getUsers } from "../services/userService";
 import { 
   updateTask, 
   getTaskById, 
-  addTask 
+  addTask,
+  deleteTask 
 } from "../services/taskService";
 
 // ✅ MONGO SERVICE: Specialized Attachment Logic
@@ -32,8 +34,14 @@ import {
   deleteAttachment 
 } from "../services/attachmentService";
 
+// ✅ MONGO SERVICE: Backlog Logic
+import { createBacklog } from "../services/backlogService"; 
+
 // ✅ ACTIVITY SERVICE: Logging Logic
 import { createActivity, getTaskActivity } from "../services/activityService";
+
+// ✅ ACTIVITY SERVICE: Work Tracking Logic
+import { createTimeLog, getTimeLogs } from "../services/timeLogService";
 
 import { PRIORITY_LIST, Priority } from "../utils/constants";
 
@@ -56,7 +64,6 @@ export default function TaskDetails() {
   const [status, setStatus] = useState(initialStatus);
   const [priority, setPriority] = useState<Priority>("medium");
   
-  // Discussion/Comments State
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState("");
   const [editingCommentIndex, setEditingCommentIndex] = useState<number | null>(null);
@@ -69,8 +76,12 @@ export default function TaskDetails() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-  // Activity State
   const [activities, setActivities] = useState<any[]>([]);
+
+  const [timeLogs, setTimeLogs] = useState<any[]>([]);
+  const [showTimeModal, setShowTimeModal] = useState(false);
+  const [timeSpentInput, setTimeSpentInput] = useState("");
+  const [startDate, setStartDate] = useState("");
 
   const permissions = user?.permissions || [];
   const canManageTasks = permissions.includes("edit_task") || permissions.includes("create_task");
@@ -124,6 +135,9 @@ export default function TaskDetails() {
       const logs = await getTaskActivity(taskId);
       setActivities(logs || []);
 
+      const timeData = await getTimeLogs(taskId);
+      setTimeLogs(timeData || []);
+
     } catch (err) {
       console.error("Fetch Error:", err);
       toast.error("Task synchronization failed");
@@ -132,7 +146,113 @@ export default function TaskDetails() {
     }
   }
 
-  // --- SUBTASK ACTIONS ---
+  // ✅ UPDATED: Move To Backlog Function with fixed createdBy
+  async function moveToBacklog() {
+    if (!taskId) return;
+
+    try {
+      // 1️⃣ Create backlog item in MongoDB (Using hardcoded createdBy: 1)
+      await createBacklog({
+        title,
+        priority,
+        status: "todo",
+        projectId: Number(projectId),
+        createdBy: 1
+      });
+
+      // 2️⃣ Delete task from Postgres
+      await deleteTask(taskId);
+
+      // 3️⃣ Activity log
+      await createActivity({
+        taskId,
+        user: user?.username || "User",
+        action: "Moved to Backlog",
+        details: title
+      });
+
+      toast.success("Task moved back to backlog");
+      navigate("/tasks");
+    } catch (err) {
+      toast.error("Failed to move task to backlog");
+    }
+  }
+
+  function validateTimeFormat(value: string) {
+    const regex = /^(\d+h\s\d+m|\d+h|\d+m)$/;
+    return regex.test(value.trim());
+  }
+
+  async function handleAddTimeLog() {
+    if (!taskId) return;
+
+    if (!validateTimeFormat(timeSpentInput)) {
+      toast.error("Invalid format. Use 2h 30m, 4h, or 45m");
+      return;
+    }
+
+    if (!startDate) {
+      toast.error("Start date is required");
+      return;
+    }
+
+    try {
+      const formattedDate = new Date(startDate).toLocaleDateString(undefined, {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      });
+
+      await createTimeLog({
+        taskId,
+        user: user?.username || "User",
+        timeSpent: timeSpentInput,
+        dateStarted: new Date(startDate)
+      });
+
+      const logs = await getTimeLogs(taskId);
+      setTimeLogs(logs);
+      
+      await createActivity({
+        taskId,
+        user: user?.username || "User",
+        action: "Time Logged",
+        details: `${timeSpentInput} for ${formattedDate}`
+      });
+
+      refreshActivities();
+      setTimeSpentInput("");
+      setStartDate("");
+      setShowTimeModal(false);
+      toast.success("Work time recorded successfully");
+    } catch (err) {
+      toast.error("Failed to log time");
+    }
+  }
+
+  function calculateTotalTime() {
+    let totalMinutes = 0;
+    timeLogs.forEach((log) => {
+      const hMatch = log.timeSpent.match(/(\d+)h/);
+      const mMatch = log.timeSpent.match(/(\d+)m/);
+      
+      const hours = hMatch ? parseInt(hMatch[1]) : 0;
+      const minutes = mMatch ? parseInt(mMatch[1]) : 0;
+      totalMinutes += hours * 60 + minutes;
+    });
+
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${hours}h ${minutes}m`;
+  }
+
+  function getMostRecentLog() {
+    if (!timeLogs || timeLogs.length === 0) return null;
+    return [...timeLogs].sort((a, b) => 
+      new Date(b.dateStarted).getTime() - new Date(a.dateStarted).getTime()
+    )[0];
+  }
+
   async function addSubtask() {
     if (!newSubtask.trim()) return;
     const newTask = { id: Date.now(), title: newSubtask, completed: false };
@@ -167,7 +287,6 @@ export default function TaskDetails() {
     }
   }
 
-  // --- DISCUSSION ACTIONS ---
   async function addComment() {
     if (!newComment.trim()) return;
     const updated = [...comments, { author: user?.username || "User", text: newComment, createdAt: new Date() }];
@@ -223,7 +342,6 @@ export default function TaskDetails() {
     }
   }
 
-  // --- ACTIVITY ACTIONS ---
   async function refreshActivities() {
     if (taskId && !isCreateMode) {
       const logs = await getTaskActivity(taskId);
@@ -231,7 +349,6 @@ export default function TaskDetails() {
     }
   }
 
-  // --- ATTACHMENT ACTIONS ---
   async function handleFileUpload() {
     if (!selectedFile || !taskId) return;
     try {
@@ -272,7 +389,6 @@ export default function TaskDetails() {
     }
   }
 
-  // --- SAVE TASK ---
   async function handleSave() {
     try {
       const taskPayload = { 
@@ -308,6 +424,8 @@ export default function TaskDetails() {
       toast.error("Save failed");
     }
   }
+
+  const latestLog = getMostRecentLog();
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center dark:bg-[#0b1220] dark:text-white font-black uppercase text-xs animate-pulse">
@@ -358,7 +476,6 @@ export default function TaskDetails() {
                   />
                 </div>
 
-                {/* SUBTASKS */}
                 <div className="pt-8 border-t border-slate-100 dark:border-slate-800">
                   <h3 className="text-[11px] font-black uppercase tracking-[0.2em] mb-6 text-slate-500">Subtasks Checklist</h3>
                   <div className="space-y-3 mb-6">
@@ -398,7 +515,6 @@ export default function TaskDetails() {
                   </div>
                 </div>
 
-                {/* ATTACHMENTS */}
                 <div className="pt-8 border-t border-slate-100 dark:border-slate-800">
                   <div className="flex items-center gap-2 mb-6">
                     <ImageIcon size={18} className="text-indigo-500" />
@@ -466,7 +582,6 @@ export default function TaskDetails() {
               </div>
             </div>
             
-            {/* DISCUSSION SECTION */}
             <div className="bg-white dark:bg-slate-900/50 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 p-8 backdrop-blur-xl">
               <div className="flex items-center gap-2 mb-8">
                 <MessageSquare size={18} className="text-indigo-500" />
@@ -526,7 +641,6 @@ export default function TaskDetails() {
             </div>
           </div>
 
-          {/* SIDEBAR */}
           <div className="space-y-8">
             <div className="bg-white dark:bg-slate-900/50 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 backdrop-blur-xl">
               <div className="space-y-8">
@@ -568,12 +682,42 @@ export default function TaskDetails() {
                 </div>
 
                 <div className="pt-8 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Clock size={14} className="text-slate-400" />
+                      <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                        Time Spent
+                      </h3>
+                    </div>
+                    <button
+                      onClick={() => setShowTimeModal(true)}
+                      className="text-[9px] bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg font-black uppercase tracking-widest shadow-sm"
+                    >
+                      Log Time
+                    </button>
+                  </div>
+
+                  <div className="text-2xl font-black text-indigo-500 px-1 mb-2">
+                    {calculateTotalTime()}
+                  </div>
+                  
+                  {latestLog && (
+                    <div className="px-1">
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Most Recent Log</p>
+                      <div className="text-[10px] font-bold text-slate-600 dark:text-slate-400 mt-0.5">
+                        {latestLog.timeSpent} on {new Date(latestLog.dateStarted).toLocaleDateString()}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-8 border-t border-slate-100 dark:border-slate-800">
                   <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6">Activity Log</h3>
                   <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                     {activities.length === 0 ? (
                       <p className="text-[10px] text-slate-400 italic">No activity recorded yet.</p>
                     ) : (
-                      activities.map((a: any) => (
+                      [...activities].reverse().map((a: any) => (
                         <div key={a._id} className="text-[11px] border-b border-slate-100 dark:border-slate-800/50 pb-3 last:border-0">
                           <div className="flex justify-between">
                             <span className="font-bold text-indigo-500">{a.user}</span>
@@ -589,14 +733,71 @@ export default function TaskDetails() {
                   </div>
                 </div>
 
-                <button onClick={handleSave} className="w-full bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white py-5 rounded-3xl text-xs font-black uppercase tracking-[0.3em] shadow-2xl transition-all active:scale-95">
-                  Save Configuration
-                </button>
+                {/* ✅ Action Panel with "Move To Backlog" */}
+                <div className="flex flex-col gap-3">
+                  <button 
+                    onClick={handleSave} 
+                    className="w-full bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white py-5 rounded-3xl text-xs font-black uppercase tracking-[0.3em] shadow-2xl transition-all active:scale-95"
+                  >
+                    Save Configuration
+                  </button>
+
+                  {!isCreateMode && status === "To Do" && (
+                    <button
+                      onClick={moveToBacklog}
+                      className="w-full bg-amber-500 hover:bg-amber-400 text-white py-4 rounded-3xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg transition-all"
+                    >
+                      Move To Backlog
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {showTimeModal && (
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2rem] w-full max-w-[420px] shadow-2xl border border-slate-200 dark:border-slate-800">
+            <h2 className="text-2xl font-black mb-6 tracking-tight">Log Work Time</h2>
+            <div className="space-y-6">
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.15em] ml-1">Time Spent</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 2h 30m"
+                  value={timeSpentInput}
+                  onChange={(e) => setTimeSpentInput(e.target.value)}
+                  className="w-full px-5 py-3 border-2 border-slate-100 dark:border-slate-800 rounded-2xl mt-1 dark:bg-slate-800 outline-none focus:border-indigo-500/50 transition-all font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.15em] ml-1">Work Date</label>
+                <input
+                  type="datetime-local"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full px-5 py-3 border-2 border-slate-100 dark:border-slate-800 rounded-2xl mt-1 dark:bg-slate-800 outline-none focus:border-indigo-500/50 transition-all font-bold"
+                />
+              </div>
+
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center italic">Supported formats: 2h, 45m, 1h 20m</p>
+            </div>
+
+            <div className="flex gap-4 mt-8">
+              <button onClick={() => setShowTimeModal(false)} className="flex-1 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-2xl transition-all">Cancel</button>
+              <button
+                onClick={handleAddTimeLog}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-all"
+              >
+                Log Entry
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {previewImage && (
         <div className="fixed inset-0 bg-slate-900/95 flex items-center justify-center z-[200] backdrop-blur-xl" onClick={() => setPreviewImage(null)}>
@@ -606,4 +807,4 @@ export default function TaskDetails() {
       )}
     </div>
   );
-}
+} 

@@ -5,13 +5,21 @@ import {
   updateUserRole, 
   getProfile, 
   toggleUserStatus, 
-  deleteUser 
+  deleteUser
 } from "../services/userService";
 import {
   getRolesWithPermissions,
   getAllPermissions,
   updateRolePermissions,
 } from "../services/roleService";
+
+// ✅ Step 2 — Modify AdminPage imports to include getUserCompanies
+import { 
+  getCompanies, 
+  updateUserCompany, 
+  getUserCompanies 
+} from "../services/companyService";
+
 import {
   Shield,
   Users,
@@ -25,7 +33,8 @@ import {
   UserPlus,
   Trash2,
   UserCheck,
-  UserX
+  UserX,
+  Building2
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useAuth } from "../context/AuthContext";
@@ -36,6 +45,10 @@ export default function AdminPage() {
 
   const [users, setUsers] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
+  
+  // ✅ 4. Set default companies state to empty as MongoDB will provide them
+  const [companies, setCompanies] = useState<any[]>([]);
+  
   const [permissionsList, setPermissionsList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedRoles, setExpandedRoles] = useState<Record<number, boolean>>({});
@@ -53,17 +66,34 @@ export default function AdminPage() {
     }
   }, [permissions]);
 
+  // ✅ Step 3 — Updated loadInitialData with Merging Logic
   async function loadInitialData() {
     try {
       setLoading(true);
-      const [userData, roleData, permData] = await Promise.all([
+      
+      const [userData, roleData, permData, companyData, companyUserData] = await Promise.all([
         permissions.includes("view_users") ? getUsers() : Promise.resolve([]),
         getRolesWithPermissions(),
         getAllPermissions(),
+        getCompanies(),
+        getUserCompanies() // Fetch mappings from MongoDB
       ]);
 
-      setUsers(userData);
+      // ✅ Step 4 — Merge company mapping with users
+      const mergedUsers = userData.map((u: any) => {
+        const mapping = companyUserData.find(
+          (m: any) => m.userId === u.id
+        );
+
+        return {
+          ...u,
+          company: mapping?.company || "WebClues" // Fallback to default
+        };
+      });
+
+      setUsers(mergedUsers); // Use merged data
       setRoles(roleData);
+      setCompanies(companyData);
       
       const filteredPerms = permData.filter((p: any) => 
         p.name !== "view_dashboard"
@@ -86,7 +116,6 @@ export default function AdminPage() {
     }
   }
 
-  // ✅ TOGGLE USER STATUS
   const handleToggleStatus = async (userId: number) => {
     if (userId === user?.id) {
       toast.error("You cannot deactivate your own account.");
@@ -101,7 +130,6 @@ export default function AdminPage() {
     }
   };
 
-  // ✅ DELETE USER
   const handleDeleteUser = async (userId: number) => {
     if (userId === user?.id) {
       toast.error("You cannot delete your own account.");
@@ -143,6 +171,17 @@ export default function AdminPage() {
     }
   };
 
+  // ✅ 8. Handle Company Change
+  const handleCompanyChange = async (userId: number, company: string) => {
+    try {
+      await updateUserCompany(userId, company);
+      toast.success("Organization mapping updated");
+      loadInitialData();
+    } catch (err) {
+      toast.error("Failed to update company");
+    }
+  };
+
   const handlePermissionToggle = async (
     roleId: number,
     permId: number,
@@ -170,8 +209,10 @@ export default function AdminPage() {
 
   if (loading)
     return (
-      <div className="p-10 text-center font-black uppercase text-xs tracking-widest animate-pulse text-indigo-600">
-        Initializing Admin Console...
+      <div className="min-h-screen flex items-center justify-center dark:bg-[#0b1220]">
+        <div className="p-10 text-center font-black uppercase text-xs tracking-widest animate-pulse text-indigo-600">
+          Initializing Admin Console...
+        </div>
       </div>
     );
 
@@ -229,6 +270,8 @@ export default function AdminPage() {
                   <tr>
                     <th className="px-10 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">Identity</th>
                     <th className="px-10 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">Email</th>
+                    {/* ✅ Updated Header for dynamic Company mapping */}
+                    <th className="px-10 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">Company</th>
                     <th className="px-10 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">Role</th>
                     <th className="px-10 py-5 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">Actions</th>
                   </tr>
@@ -243,6 +286,20 @@ export default function AdminPage() {
                         </div>
                       </td>
                       <td className="px-10 py-5 text-sm text-slate-500 dark:text-slate-400">{u.email}</td>
+                      
+                      {/* ✅ 5. Dynamic Company Dropdown mapping to MongoDB organizations */}
+                      <td className="px-10 py-5">
+                        <select
+                          value={u.company}
+                          onChange={(e) => handleCompanyChange(u.id, e.target.value)}
+                          className="bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-xl px-4 py-2 text-[10px] font-black uppercase outline-none cursor-pointer hover:ring-2 hover:ring-purple-500/20 transition-all shadow-sm border-none"
+                        >
+                          {companies.map((c) => (
+                            <option key={c._id} value={c.name}>{c.name}</option>
+                          ))}
+                        </select>
+                      </td>
+
                       <td className="px-10 py-5">
                         <span className="px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-lg text-[10px] font-black uppercase">
                           {u.Role?.name || "Unassigned"}
@@ -259,7 +316,6 @@ export default function AdminPage() {
                           ))}
                         </select>
 
-                        {/* ✅ TOGGLE STATUS BUTTON */}
                         <button 
                           onClick={() => handleToggleStatus(u.id)}
                           className={`p-2 rounded-xl transition-all ${u.isActive ? 'text-amber-500 hover:bg-amber-50' : 'text-emerald-500 hover:bg-emerald-50'}`}
@@ -268,7 +324,6 @@ export default function AdminPage() {
                           {u.isActive ? <UserX size={18}/> : <UserCheck size={18}/>}
                         </button>
 
-                        {/* ✅ DELETE BUTTON */}
                         <button 
                           onClick={() => handleDeleteUser(u.id)}
                           className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-all"
@@ -285,7 +340,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ROLE SECTION HEADER WITH BULK BUTTON */}
+        {/* ROLE SECTION */}
         <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
           <div className="flex items-center gap-3">
             <Layers size={20} className="text-indigo-600" />
@@ -301,7 +356,6 @@ export default function AdminPage() {
           </button>
         </div>
 
-        {/* ROLE CARDS */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
           {roles.map((role) => {
             const isOpen = expandedRoles[role.id];

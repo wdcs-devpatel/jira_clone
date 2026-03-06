@@ -1,8 +1,9 @@
 const mongoose = require("mongoose");
 
-const activitySchema = new mongoose.Schema({
+const timeLogSchema = new mongoose.Schema({
+
   taskId: {
-    type: String, 
+    type: String,
     required: true
   },
 
@@ -11,15 +12,20 @@ const activitySchema = new mongoose.Schema({
     required: true
   },
 
-  action: {
+  timeSpent: {
     type: String,
     required: true
   },
 
-  details: {
+  dateStarted: {
+    type: Date,
+    required: true
+  },
+
+  description: {
     type: String
   }
 
 }, { timestamps: true });
 
-module.exports = mongoose.model("Activity", activitySchema);
+module.exports = mongoose.model("TimeLog", timeLogSchema);
