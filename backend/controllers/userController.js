@@ -18,7 +18,7 @@ exports.getUsers = async (req, res, next) => {
         "firstName",
         "lastName",
         "phone",
-        "isActive" // ✅ Included to show status in Admin table
+        "isActive"
       ]
     });
 
@@ -29,14 +29,14 @@ exports.getUsers = async (req, res, next) => {
   }
 };
 
-/* =====================================================
+/* =====================================================                             
    GET CURRENT AUTHENTICATED USER (WITH PERMISSIONS)
    🔥 CRITICAL: Always fetch fresh permissions
 ===================================================== */
 exports.getCurrentUser = async (req, res, next) => {
   try {
     const user = await User.findByPk(req.user.id, {
-      include: {
+        include: {
         model: Role,
         include: {
           model: Permission,

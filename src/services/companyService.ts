@@ -1,6 +1,5 @@
 import axios from "axios";
 const API = "http://localhost:5001/api";
-
 export async function getCompanies() {
   try {
     const res = await axios.get(`${API}/companies`);
@@ -11,7 +10,6 @@ export async function getCompanies() {
   }
 }
 
-// ✅ Step 1 — Add API to get mappings
 export async function getUserCompanies() {
   try {
     const res = await axios.get(`${API}/companies/users`);
@@ -28,6 +26,18 @@ export async function updateUserCompany(userId: number, company: string) {
     return res.data;
   } catch (error) {
     console.error("Failed to update company:", error);
-    throw error;
+    throw error;  
+  }
+}
+
+/* NEW FUNCTION */
+export async function getUserCompany(userId: number) {
+  try {
+    const res = await axios.get(`${API}/companies/users`);
+    const mapping = res.data.find((m: any) => m.userId === userId);
+    return mapping?.company || "WebClues";
+  } catch (err) {
+    console.error("Failed to fetch user company:", err);
+    return "WebClues";
   }
 }
