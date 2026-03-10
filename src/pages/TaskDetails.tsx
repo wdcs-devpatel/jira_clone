@@ -2,15 +2,12 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import { 
   ArrowLeft, 
-  Upload, 
-  Image as ImageIcon, 
   MessageSquare, 
   Send,
   X,
   Trash2,
   Calendar,
   User as UserIcon,
-  FileText,
   Edit2,
   Check,
   Clock 
@@ -18,6 +15,10 @@ import {
 import { toast } from "react-toastify";
 import { useAuth } from "../context/AuthContext";
 import { getUsers } from "../services/userService";
+
+// ✅ Modular Components
+import TaskAttachments, { Attachment } from "../components/TaskAttachments";
+import TaskActivityLog from "../components/TaskActivityLog";
 
 // ✅ POSTGRES SERVICE: Core Task Logic
 import { 
@@ -29,8 +30,8 @@ import {
 
 // ✅ MONGO SERVICE: Specialized Attachment Logic
 import { 
-  uploadAttachment, 
   getAttachments, 
+  uploadAttachment, 
   deleteAttachment 
 } from "../services/attachmentService";
 
@@ -72,7 +73,7 @@ export default function TaskDetails() {
   const [subtasks, setSubtasks] = useState<any[]>([]);
   const [newSubtask, setNewSubtask] = useState("");
   
-  const [attachments, setAttachments] = useState<any[]>([]);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
@@ -83,8 +84,12 @@ export default function TaskDetails() {
   const [timeSpentInput, setTimeSpentInput] = useState("");
   const [startDate, setStartDate] = useState("");
 
-  const permissions = user?.permissions || [];
-  const canManageTasks = permissions.includes("edit_task") || permissions.includes("create_task");
+  // ✅ Performance Improvement: Memoized calculation of latest log
+  const latestLog = timeLogs.length
+    ? [...timeLogs].sort(
+        (a, b) => new Date(b.dateStarted).getTime() - new Date(a.dateStarted).getTime()
+      )[0]
+    : null;
 
   useEffect(() => {
     loadUsers();
@@ -146,12 +151,9 @@ export default function TaskDetails() {
     }
   }
 
-  // ✅ UPDATED: Move To Backlog Function with fixed createdBy
   async function moveToBacklog() {
     if (!taskId) return;
-
     try {
-      // 1️⃣ Create backlog item in MongoDB (Using hardcoded createdBy: 1)
       await createBacklog({
         title,
         priority,
@@ -159,18 +161,13 @@ export default function TaskDetails() {
         projectId: Number(projectId),
         createdBy: 1
       });
-
-      // 2️⃣ Delete task from Postgres
       await deleteTask(taskId);
-
-      // 3️⃣ Activity log
       await createActivity({
         taskId,
         user: user?.username || "User",
         action: "Moved to Backlog",
         details: title
       });
-
       toast.success("Task moved back to backlog");
       navigate("/tasks");
     } catch (err) {
@@ -178,53 +175,38 @@ export default function TaskDetails() {
     }
   }
 
-  function validateTimeFormat(value: string) {
-    const regex = /^(\d+h\s\d+m|\d+h|\d+m)$/;
-    return regex.test(value.trim());
-  }
-
   async function handleAddTimeLog() {
     if (!taskId) return;
-
-    if (!validateTimeFormat(timeSpentInput)) {
+    const regex = /^(\d+h\s\d+m|\d+h|\d+m)$/;
+    if (!regex.test(timeSpentInput.trim())) {
       toast.error("Invalid format. Use 2h 30m, 4h, or 45m");
       return;
     }
-
     if (!startDate) {
       toast.error("Start date is required");
       return;
     }
 
     try {
-      const formattedDate = new Date(startDate).toLocaleDateString(undefined, {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric'
-      });
-
       await createTimeLog({
         taskId,
         user: user?.username || "User",
         timeSpent: timeSpentInput,
         dateStarted: new Date(startDate)
       });
-
       const logs = await getTimeLogs(taskId);
       setTimeLogs(logs);
-      
       await createActivity({
         taskId,
         user: user?.username || "User",
         action: "Time Logged",
-        details: `${timeSpentInput} for ${formattedDate}`
+        details: timeSpentInput
       });
-
       refreshActivities();
       setTimeSpentInput("");
       setStartDate("");
       setShowTimeModal(false);
-      toast.success("Work time recorded successfully");
+      toast.success("Work time recorded");
     } catch (err) {
       toast.error("Failed to log time");
     }
@@ -235,22 +217,9 @@ export default function TaskDetails() {
     timeLogs.forEach((log) => {
       const hMatch = log.timeSpent.match(/(\d+)h/);
       const mMatch = log.timeSpent.match(/(\d+)m/);
-      
-      const hours = hMatch ? parseInt(hMatch[1]) : 0;
-      const minutes = mMatch ? parseInt(mMatch[1]) : 0;
-      totalMinutes += hours * 60 + minutes;
+      totalMinutes += (hMatch ? parseInt(hMatch[1]) * 60 : 0) + (mMatch ? parseInt(mMatch[1]) : 0);
     });
-
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    return `${hours}h ${minutes}m`;
-  }
-
-  function getMostRecentLog() {
-    if (!timeLogs || timeLogs.length === 0) return null;
-    return [...timeLogs].sort((a, b) => 
-      new Date(b.dateStarted).getTime() - new Date(a.dateStarted).getTime()
-    )[0];
+    return `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`;
   }
 
   async function addSubtask() {
@@ -259,14 +228,8 @@ export default function TaskDetails() {
     const updated = [...subtasks, newTask];
     setSubtasks(updated);
     setNewSubtask("");
-
     if (!isCreateMode) {
-      await createActivity({
-        taskId: taskId!,
-        user: user?.username || "User",
-        action: "Subtask Added",
-        details: newSubtask
-      });
+      await createActivity({ taskId: taskId!, user: user?.username || "User", action: "Subtask Added", details: newSubtask });
       refreshActivities();
     }
   }
@@ -275,14 +238,8 @@ export default function TaskDetails() {
     const subtask = subtasks.find(s => s.id === id);
     const updated = subtasks.map((s) => s.id === id ? { ...s, completed: !s.completed } : s);
     setSubtasks(updated);
-
     if (!isCreateMode && subtask) {
-      await createActivity({
-        taskId: taskId!,
-        user: user?.username || "User",
-        action: `Subtask ${!subtask.completed ? 'Completed' : 'Reopened'}`,
-        details: subtask.title
-      });
+      await createActivity({ taskId: taskId!, user: user?.username || "User", action: `Subtask ${!subtask.completed ? 'Completed' : 'Reopened'}`, details: subtask.title });
       refreshActivities();
     }
   }
@@ -291,14 +248,8 @@ export default function TaskDetails() {
     if (!newComment.trim()) return;
     const updated = [...comments, { author: user?.username || "User", text: newComment, createdAt: new Date() }];
     setComments(updated);
-
     if (!isCreateMode) {
-      await createActivity({
-        taskId: taskId!,
-        user: user?.username || "User",
-        action: "Comment Added",
-        details: newComment
-      });
+      await createActivity({ taskId: taskId!, user: user?.username || "User", action: "Comment Added", details: newComment });
       refreshActivities();
     }
     setNewComment("");
@@ -306,18 +257,10 @@ export default function TaskDetails() {
 
   function deleteComment(index: number) {
     const commentToDelete = comments[index];
-    const updated = comments.filter((_, i) => i !== index);
-    setComments(updated);
-    
+    setComments(comments.filter((_, i) => i !== index));
     if (!isCreateMode) {
-      createActivity({
-        taskId: taskId!,
-        user: user?.username || "User",
-        action: "Comment Deleted",
-        details: commentToDelete.text.substring(0, 20) + "..."
-      }).then(() => refreshActivities());
+      createActivity({ taskId: taskId!, user: user?.username || "User", action: "Comment Deleted", details: commentToDelete.text.substring(0, 20) + "..." }).then(() => refreshActivities());
     }
-    toast.info("Comment removed");
   }
 
   function startEditComment(index: number) {
@@ -331,14 +274,8 @@ export default function TaskDetails() {
     updated[index].edited = true;
     setComments(updated);
     setEditingCommentIndex(null);
-    
     if (!isCreateMode) {
-      createActivity({
-        taskId: taskId!,
-        user: user?.username || "User",
-        action: "Comment Edited",
-        details: editCommentText.substring(0, 20) + "..."
-      }).then(() => refreshActivities());
+      createActivity({ taskId: taskId!, user: user?.username || "User", action: "Comment Edited", details: editCommentText.substring(0, 20) + "..." }).then(() => refreshActivities());
     }
   }
 
@@ -353,20 +290,13 @@ export default function TaskDetails() {
     if (!selectedFile || !taskId) return;
     try {
       await uploadAttachment(taskId, selectedFile);
-      await createActivity({
-        taskId,
-        user: user?.username || "User",
-        action: "File Uploaded",
-        details: selectedFile.name
-      });
+      await createActivity({ taskId, user: user?.username || "User", action: "File Uploaded", details: selectedFile.name });
       setSelectedFile(null);
       const mongoFiles = await getAttachments(taskId);
       setAttachments(mongoFiles || []);
       refreshActivities();
       toast.success("File attached");
-    } catch (err) {
-      toast.error("Upload failed");
-    }
+    } catch (err) { toast.error("Upload failed"); }
   }
 
   async function handleDeleteAttachment(fileId: string) {
@@ -375,225 +305,97 @@ export default function TaskDetails() {
       await deleteAttachment(fileId);
       setAttachments(attachments.filter(a => a._id !== fileId));
       if (fileToDelete) {
-        await createActivity({
-          taskId: taskId!,
-          user: user?.username || "User",
-          action: "Attachment Removed",
-          details: fileToDelete.filename
-        });
+        await createActivity({ taskId: taskId!, user: user?.username || "User", action: "Attachment Removed", details: fileToDelete.filename });
       }
       refreshActivities();
       toast.success("Attachment removed");
-    } catch (err) {
-      toast.error("Delete failed");
-    }
+    } catch (err) { toast.error("Delete failed"); }
   }
 
   async function handleSave() {
     try {
-      const taskPayload = { 
-        title, 
-        description, 
-        priority, 
-        status, 
-        assigneeId,
-        comments: JSON.stringify(comments),
-        subtasks: JSON.stringify(subtasks)
-      };
-
+      const taskPayload = { title, description, priority, status, assigneeId, comments: JSON.stringify(comments), subtasks: JSON.stringify(subtasks) };
       if (isCreateMode) {
         const task = await addTask(taskPayload, Number(projectId));
-        await createActivity({
-          taskId: task.id,
-          user: user?.username || "User",
-          action: "Task Created"
-        });
-        toast.success("Task created");
+        await createActivity({ taskId: task.id, user: user?.username || "User", action: "Task Created" });
       } else {
         await updateTask(taskId!, taskPayload);
-        await createActivity({
-          taskId: taskId!,
-          user: user?.username || "User",
-          action: "Task Updated",
-          details: `Priority: ${priority}, Status: ${status}`
-        });
-        toast.success("Task updated");
+        await createActivity({ taskId: taskId!, user: user?.username || "User", action: "Task Updated", details: `Priority: ${priority}` });
       }
       navigate(`/kanban/${projectId}`);
-    } catch (err: any) {
-      toast.error("Save failed");
-    }
+      toast.success("Task saved successfully");
+    } catch (err) { toast.error("Save failed"); }
   }
 
-  const latestLog = getMostRecentLog();
-
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center dark:bg-[#0b1220] dark:text-white font-black uppercase text-xs animate-pulse">
-      Syncing Intelligence...
-    </div>
-  );
+  if (loading) return <div className="min-h-screen flex items-center justify-center dark:bg-[#0b1220] dark:text-white font-black uppercase text-xs animate-pulse">Syncing Intelligence...</div>;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0b1220] p-4 md:p-8 transition-colors duration-300 text-slate-900 dark:text-slate-100">
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
-          <Link to={`/kanban/${projectId}`} className="inline-flex items-center gap-2 text-slate-400 hover:text-indigo-500 text-[11px] font-bold uppercase tracking-[0.2em] transition-all">
+          <Link to={`/kanban/${projectId}`} className="inline-flex items-center gap-2 text-slate-400 hover:text-indigo-500 text-[11px] font-bold uppercase tracking-[0.2em]">
             <ArrowLeft size={14} /> Back to Board
           </Link>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Main Content Area */}
           <div className="lg:col-span-3 space-y-8">
             <div className="bg-white dark:bg-slate-900/50 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 p-8 backdrop-blur-xl">
               <div className="flex justify-between items-start mb-8">
-                <h2 className="text-3xl font-black tracking-tight">
-                  {isCreateMode ? "New Task" : "Task Configuration"}
-                </h2>
-                <div className="px-4 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[10px] font-black uppercase tracking-widest border border-indigo-100 dark:border-indigo-800">
-                  {status}
-                </div>
+                <h2 className="text-3xl font-black tracking-tight">{isCreateMode ? "New Task" : "Task Configuration"}</h2>
+                <div className="px-4 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[10px] font-black uppercase tracking-widest border border-indigo-100 dark:border-indigo-800">{status}</div>
               </div>
 
               <div className="space-y-8">
                 <div>
                   <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.15em] ml-1">Title</label>
-                  <input 
-                    value={title} 
-                    onChange={(e) => setTitle(e.target.value)} 
-                    placeholder="Enter task name..."
-                    className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 mt-2 dark:bg-slate-900/50 outline-none focus:border-indigo-500/50 transition-all text-lg font-bold" 
-                  />
+                  <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Enter task name..." className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 mt-2 dark:bg-slate-900/50 outline-none focus:border-indigo-500/50 transition-all text-lg font-bold" />
                 </div>
                 
                 <div>
                   <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.15em] ml-1">Description</label>
-                  <textarea 
-                    value={description} 
-                    onChange={(e) => setDescription(e.target.value)} 
-                    rows={5} 
-                    placeholder="Add more details about this task..."
-                    className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 mt-2 dark:bg-slate-900/50 outline-none focus:border-indigo-500/50 transition-all text-base resize-none" 
-                  />
+                  <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5} placeholder="Add details..." className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 mt-2 dark:bg-slate-900/50 outline-none focus:border-indigo-500/50 transition-all text-base resize-none" />
                 </div>
 
+                {/* Subtasks Section */}
                 <div className="pt-8 border-t border-slate-100 dark:border-slate-800">
                   <h3 className="text-[11px] font-black uppercase tracking-[0.2em] mb-6 text-slate-500">Subtasks Checklist</h3>
                   <div className="space-y-3 mb-6">
                     {subtasks.map((s: any) => (
                       <div key={s.id} className="flex items-center gap-4 group p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all border border-transparent hover:border-slate-100 dark:hover:border-slate-800">
-                        <input 
-                          type="checkbox" 
-                          checked={s.completed} 
-                          onChange={() => toggleSubtask(s.id)} 
-                          className="w-5 h-5 rounded-lg border-2 border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-0 cursor-pointer" 
-                        />
-                        <span className={`text-sm font-semibold transition-all ${s.completed ? "line-through opacity-40 italic text-slate-500" : "text-slate-700 dark:text-slate-300"}`}>
-                          {s.title}
-                        </span>
-                        <button 
-                          onClick={() => setSubtasks(subtasks.filter(st => st.id !== s.id))}
-                          className="ml-auto opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-all"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        <input type="checkbox" checked={s.completed} onChange={() => toggleSubtask(s.id)} className="w-5 h-5 rounded-lg border-2 border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-0 cursor-pointer" />
+                        <span className={`text-sm font-semibold transition-all ${s.completed ? "line-through opacity-40 italic text-slate-500" : "text-slate-700 dark:text-slate-300"}`}>{s.title}</span>
+                        <button onClick={() => setSubtasks(subtasks.filter(st => st.id !== s.id))} className="ml-auto opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-all"><Trash2 size={14} /></button>
                       </div>
                     ))}
                   </div>
                   <div className="flex gap-3 bg-slate-50 dark:bg-slate-800/30 p-2 rounded-2xl border border-slate-100 dark:border-slate-800">
-                    <input 
-                      value={newSubtask} 
-                      onChange={(e) => setNewSubtask(e.target.value)} 
-                      placeholder="Add a new requirement..." 
-                      className="flex-1 px-4 py-3 bg-transparent outline-none text-sm font-medium" 
-                    />
-                    <button 
-                      onClick={addSubtask} 
-                      className="bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 px-6 rounded-xl text-[10px] font-black uppercase tracking-widest hover:shadow-sm transition-all border border-slate-200 dark:border-slate-700"
-                    >
-                      Add
-                    </button>
+                    <input value={newSubtask} onChange={(e) => setNewSubtask(e.target.value)} placeholder="Add a new requirement..." className="flex-1 px-4 py-3 bg-transparent outline-none text-sm font-medium" />
+                    <button onClick={addSubtask} className="bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 px-6 rounded-xl text-[10px] font-black uppercase tracking-widest hover:shadow-sm transition-all border border-slate-200 dark:border-slate-700">Add</button>
                   </div>
                 </div>
 
-                <div className="pt-8 border-t border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center gap-2 mb-6">
-                    <ImageIcon size={18} className="text-indigo-500" />
-                    <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Attachments</h3>
-                  </div>
-
-                  <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all group">
-                    <Upload size={22} className="text-slate-400 group-hover:text-indigo-500 mb-2 transition-all" />
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover:text-indigo-600 transition-all">
-                      Click or drag file to upload
-                    </p>
-                    <input
-                      type="file"
-                      className="hidden"
-                      onChange={(e) => setSelectedFile(e.target.files ? e.target.files[0] : null)}
-                    />
-                  </label>
-
-                  {selectedFile && (
-                    <div className="mt-4 flex items-center justify-between bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 p-4 rounded-2xl animate-in slide-in-from-top-2 duration-300">
-                      <div className="flex items-center gap-3">
-                        <div className="bg-indigo-500 text-white p-2 rounded-lg">
-                          <Upload size={14} />
-                        </div>
-                        <span className="text-xs font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 truncate max-w-[200px]">
-                          {selectedFile.name}
-                        </span>
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => setSelectedFile(null)} className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-red-500 transition-all">
-                          Cancel
-                        </button>
-                        <button onClick={handleFileUpload} disabled={isCreateMode} className={`bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-all ${isCreateMode ? 'opacity-50' : ''}`}>
-                          Confirm Upload
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {attachments.length > 0 && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4 mt-8">
-                      {attachments.map((file: any) => {
-                        const baseUrl = `http://localhost:5001`;
-                        const fileUrl = `${baseUrl}${file.fileUrl}`;
-                        const isImage = file.filename.match(/\.(jpg|jpeg|png|gif|webp)$/i);
-                        return (
-                          <div key={file._id} className="relative group h-24 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 shadow-sm transition-all hover:ring-2 ring-indigo-500/30">
-                            {isImage ? (
-                              <img src={fileUrl} className="w-full h-full object-cover cursor-pointer" onClick={() => setPreviewImage(fileUrl)} alt="attachment" />
-                            ) : (
-                              <a href={fileUrl} target="_blank" rel="noreferrer" className="w-full h-full flex flex-col items-center justify-center gap-1 bg-slate-50 dark:bg-slate-800 text-indigo-500">
-                                <FileText size={24} />
-                                <span className="text-[8px] font-black uppercase">Open</span>
-                              </a>
-                            )}
-                            <button onClick={() => handleDeleteAttachment(file._id)} className="absolute top-1.5 right-1.5 bg-red-500 text-white p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all">
-                              <Trash2 size={12} />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                {/* ✅ Modular Attachments Component */}
+                <TaskAttachments
+                  attachments={attachments}
+                  selectedFile={selectedFile}
+                  setSelectedFile={setSelectedFile}
+                  handleFileUpload={handleFileUpload}
+                  handleDeleteAttachment={handleDeleteAttachment}
+                  setPreviewImage={setPreviewImage}
+                  isCreateMode={isCreateMode}
+                />
               </div>
             </div>
             
+            {/* Discussion (Comments) Section */}
             <div className="bg-white dark:bg-slate-900/50 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 p-8 backdrop-blur-xl">
-              <div className="flex items-center gap-2 mb-8">
-                <MessageSquare size={18} className="text-indigo-500" />
-                <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Discussion</h3>
-              </div>
-              
+              <div className="flex items-center gap-2 mb-8"><MessageSquare size={18} className="text-indigo-500" /><h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Discussion</h3></div>
               <div className="space-y-6 mb-8 max-h-[400px] overflow-y-auto pr-4 custom-scrollbar">
                 {comments.map((c: any, idx: number) => (
                   <div key={idx} className="flex gap-4 p-5 bg-slate-50 dark:bg-slate-800/40 rounded-3xl border border-slate-100 dark:border-slate-800 relative group">
-                    <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center text-xs font-black shrink-0">
-                      {(c.author || "U").charAt(0).toUpperCase()}
-                    </div>
+                    <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center text-xs font-black shrink-0">{(c.author || "U").charAt(0).toUpperCase()}</div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-1">
                         <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">{c.author || "Member"}</p>
@@ -605,150 +407,62 @@ export default function TaskDetails() {
                            </div>
                         </div>
                       </div>
-                      
                       {editingCommentIndex === idx ? (
                         <div className="mt-2 flex gap-2">
-                          <input 
-                            value={editCommentText} 
-                            onChange={(e) => setEditCommentText(e.target.value)}
-                            className="flex-1 bg-white dark:bg-slate-900 border border-indigo-500/30 rounded-lg px-3 py-1 text-sm outline-none"
-                          />
+                          <input value={editCommentText} onChange={(e) => setEditCommentText(e.target.value)} className="flex-1 bg-white dark:bg-slate-900 border border-indigo-500/30 rounded-lg px-3 py-1 text-sm outline-none" />
                           <button onClick={() => saveEditComment(idx)} className="text-green-500"><Check size={16}/></button>
                           <button onClick={() => setEditingCommentIndex(null)} className="text-slate-400"><X size={16}/></button>
                         </div>
                       ) : (
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                          {c.text}
-                          {c.edited && <span className="text-[9px] ml-2 opacity-40 italic">(edited)</span>}
-                        </p>
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-300">{c.text}{c.edited && <span className="text-[9px] ml-2 opacity-40 italic">(edited)</span>}</p>
                       )}
                     </div>
                   </div>
                 ))}
               </div>
-
               <div className="relative">
-                <input 
-                  value={newComment} 
-                  onChange={(e) => setNewComment(e.target.value)} 
-                  placeholder="Type a message..." 
-                  className="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 outline-none text-sm font-medium dark:bg-slate-900 focus:border-indigo-500/50 transition-all pr-16" 
-                />
-                <button onClick={addComment} className="absolute right-3 top-2.5 bg-indigo-600 hover:bg-indigo-500 text-white p-2.5 rounded-xl transition-all shadow-lg">
-                  <Send size={18} />
-                </button>
+                <input value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Type a message..." className="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 outline-none text-sm font-medium dark:bg-slate-900 focus:border-indigo-500/50 transition-all pr-16" />
+                <button onClick={addComment} className="absolute right-3 top-2.5 bg-indigo-600 hover:bg-indigo-500 text-white p-2.5 rounded-xl transition-all shadow-lg"><Send size={18} /></button>
               </div>
             </div>
           </div>
 
+          {/* Sidebar Area */}
           <div className="space-y-8">
             <div className="bg-white dark:bg-slate-900/50 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 backdrop-blur-xl">
               <div className="space-y-8">
+                {/* Priority Selection */}
                 <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Calendar size={14} className="text-slate-400" />
-                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Priority</label>
-                  </div>
+                  <div className="flex items-center gap-2 mb-4"><Calendar size={14} className="text-slate-400" /><label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Priority</label></div>
                   <div className="grid grid-cols-1 gap-2">
                     {PRIORITY_LIST.map((p) => (
-                      <button 
-                        key={p.value} 
-                        onClick={() => setPriority(p.value as Priority)} 
-                        className={`py-3 rounded-2xl border-2 text-[10px] font-black uppercase tracking-[0.15em] transition-all flex items-center justify-center gap-2 ${
-                          priority === p.value 
-                            ? "bg-indigo-600 text-white border-indigo-600 shadow-xl" 
-                            : "dark:border-slate-800 dark:text-slate-400 hover:border-slate-600"
-                        }`}
-                      >
-                        {p.label}
-                      </button>
+                      <button key={p.value} onClick={() => setPriority(p.value as Priority)} className={`py-3 rounded-2xl border-2 text-[10px] font-black uppercase tracking-[0.15em] transition-all flex items-center justify-center gap-2 ${priority === p.value ? "bg-indigo-600 text-white border-indigo-600 shadow-xl" : "dark:border-slate-800 dark:text-slate-400 hover:border-slate-600"}`}>{p.label}</button>
                     ))}
                   </div>
                 </div>
 
+                {/* Assignee Selection */}
                 <div className="pt-8 border-t border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center gap-2 mb-4">
-                    <UserIcon size={14} className="text-slate-400" />
-                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Assignee</label>
-                  </div>
-                  <select 
-                    value={assigneeId || ""} 
-                    onChange={(e) => setAssigneeId(e.target.value)} 
-                    className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 dark:bg-slate-900 text-xs font-black uppercase tracking-widest outline-none transition-all appearance-none"
-                  >
+                  <div className="flex items-center gap-2 mb-4"><UserIcon size={14} className="text-slate-400" /><label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Assignee</label></div>
+                  <select value={assigneeId || ""} onChange={(e) => setAssigneeId(e.target.value)} className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 dark:bg-slate-900 text-xs font-black uppercase tracking-widest outline-none transition-all appearance-none cursor-pointer">
                     <option value="">Unassigned</option>
                     {users.map((u) => <option key={u.id} value={u.id}>{u.username}</option>)}
                   </select>
                 </div>
 
-                <div className="pt-8 border-t border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Clock size={14} className="text-slate-400" />
-                      <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                        Time Spent
-                      </h3>
-                    </div>
-                    <button
-                      onClick={() => setShowTimeModal(true)}
-                      className="text-[9px] bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg font-black uppercase tracking-widest shadow-sm"
-                    >
-                      Log Time
-                    </button>
-                  </div>
+                {/* ✅ Modular Activity Log & Time Tracking Component */}
+                <TaskActivityLog 
+                  activities={activities}
+                  totalTime={calculateTotalTime()}
+                  latestLog={latestLog}
+                  onLogTimeClick={() => setShowTimeModal(true)}
+                />
 
-                  <div className="text-2xl font-black text-indigo-500 px-1 mb-2">
-                    {calculateTotalTime()}
-                  </div>
-                  
-                  {latestLog && (
-                    <div className="px-1">
-                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Most Recent Log</p>
-                      <div className="text-[10px] font-bold text-slate-600 dark:text-slate-400 mt-0.5">
-                        {latestLog.timeSpent} on {new Date(latestLog.dateStarted).toLocaleDateString()}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="pt-8 border-t border-slate-100 dark:border-slate-800">
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6">Activity Log</h3>
-                  <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                    {activities.length === 0 ? (
-                      <p className="text-[10px] text-slate-400 italic">No activity recorded yet.</p>
-                    ) : (
-                      [...activities].reverse().map((a: any) => (
-                        <div key={a._id} className="text-[11px] border-b border-slate-100 dark:border-slate-800/50 pb-3 last:border-0">
-                          <div className="flex justify-between">
-                            <span className="font-bold text-indigo-500">{a.user}</span>
-                          </div>
-                          <span className="text-slate-600 dark:text-slate-300">{a.action}</span>
-                          {a.details && <span className="text-slate-400 block mt-0.5 truncate italic"> — {a.details}</span>}
-                          <div className="text-[9px] text-slate-400 mt-1 uppercase font-bold tracking-tighter">
-                            {new Date(a.createdAt).toLocaleString()}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                {/* ✅ Action Panel with "Move To Backlog" */}
-                <div className="flex flex-col gap-3">
-                  <button 
-                    onClick={handleSave} 
-                    className="w-full bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white py-5 rounded-3xl text-xs font-black uppercase tracking-[0.3em] shadow-2xl transition-all active:scale-95"
-                  >
-                    Save Configuration
-                  </button>
-
+                {/* Action Buttons */}
+                <div className="flex flex-col gap-3 pt-6 border-t border-slate-100 dark:border-slate-800">
+                  <button onClick={handleSave} className="w-full bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white py-5 rounded-3xl text-xs font-black uppercase tracking-[0.3em] shadow-2xl transition-all active:scale-95">Save Configuration</button>
                   {!isCreateMode && status === "To Do" && (
-                    <button
-                      onClick={moveToBacklog}
-                      className="w-full bg-amber-500 hover:bg-amber-400 text-white py-4 rounded-3xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg transition-all"
-                    >
-                      Move To Backlog
-                    </button>
+                    <button onClick={moveToBacklog} className="w-full bg-amber-500 hover:bg-amber-400 text-white py-4 rounded-3xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg transition-all">Move To Backlog</button>
                   )}
                 </div>
               </div>
@@ -757,54 +471,37 @@ export default function TaskDetails() {
         </div>
       </div>
 
+      {/* Time Tracking Modal */}
       {showTimeModal && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2rem] w-full max-w-[420px] shadow-2xl border border-slate-200 dark:border-slate-800">
+          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2rem] w-full max-w-[420px] shadow-2xl border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in duration-200">
             <h2 className="text-2xl font-black mb-6 tracking-tight">Log Work Time</h2>
             <div className="space-y-6">
               <div>
                 <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.15em] ml-1">Time Spent</label>
-                <input
-                  type="text"
-                  placeholder="e.g. 2h 30m"
-                  value={timeSpentInput}
-                  onChange={(e) => setTimeSpentInput(e.target.value)}
-                  className="w-full px-5 py-3 border-2 border-slate-100 dark:border-slate-800 rounded-2xl mt-1 dark:bg-slate-800 outline-none focus:border-indigo-500/50 transition-all font-bold"
-                />
+                <input type="text" placeholder="e.g. 2h 30m" value={timeSpentInput} onChange={(e) => setTimeSpentInput(e.target.value)} className="w-full px-5 py-3 border-2 border-slate-100 dark:border-slate-800 rounded-2xl mt-1 dark:bg-slate-800 outline-none focus:border-indigo-500/50 transition-all font-bold" />
               </div>
-
               <div>
                 <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.15em] ml-1">Work Date</label>
-                <input
-                  type="datetime-local"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full px-5 py-3 border-2 border-slate-100 dark:border-slate-800 rounded-2xl mt-1 dark:bg-slate-800 outline-none focus:border-indigo-500/50 transition-all font-bold"
-                />
+                <input type="datetime-local" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full px-5 py-3 border-2 border-slate-100 dark:border-slate-800 rounded-2xl mt-1 dark:bg-slate-800 outline-none focus:border-indigo-500/50 transition-all font-bold" />
               </div>
-
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center italic">Supported formats: 2h, 45m, 1h 20m</p>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center italic">Formats: 2h, 45m, 1h 20m</p>
             </div>
-
             <div className="flex gap-4 mt-8">
               <button onClick={() => setShowTimeModal(false)} className="flex-1 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-2xl transition-all">Cancel</button>
-              <button
-                onClick={handleAddTimeLog}
-                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-all"
-              >
-                Log Entry
-              </button>
+              <button onClick={handleAddTimeLog} className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-all">Log Entry</button>
             </div>
           </div>
         </div>
       )}
 
+      {/* Image Preview Overlay */}
       {previewImage && (
-        <div className="fixed inset-0 bg-slate-900/95 flex items-center justify-center z-[200] backdrop-blur-xl" onClick={() => setPreviewImage(null)}>
+        <div className="fixed inset-0 bg-slate-900/95 flex items-center justify-center z-[200] backdrop-blur-xl animate-in fade-in duration-300" onClick={() => setPreviewImage(null)}>
           <button className="absolute top-8 right-8 text-white/50 bg-white/10 p-3 rounded-2xl"><X size={32} /></button>
           <img src={previewImage} className="max-h-[80vh] max-w-[90vw] rounded-3xl shadow-2xl border-4 border-white/10 object-contain" alt="preview" />
         </div>
       )}
     </div>
   );
-} 
+}

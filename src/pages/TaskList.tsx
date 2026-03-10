@@ -14,7 +14,6 @@ import {
   CheckCircle2,
   Circle,
   Clock,
-  ClipboardList,
   Search,
   Filter,
   Lock,
@@ -22,8 +21,7 @@ import {
   Edit2,
   Save,
   X,
-  PlusCircle,
-  Layout 
+  PlusCircle    
 } from "lucide-react";
 
 type Status = "todo" | "in-progress" | "done";
@@ -36,7 +34,7 @@ interface Task {
   priority: Priority;
   projectId: number;
 }
-
+  
 interface Backlog {
   _id: string;
   title: string;
@@ -65,13 +63,12 @@ export default function TaskList() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editPriority, setEditPriority] = useState<Priority>("medium");
-  // ✅ 1. Add Edit Project State
   const [editProject, setEditProject] = useState<number | null>(null);
   
   const isInitialMount = useRef(true);
   const canEditTask = permissions.includes("edit_task");
 
-  /* ---------------- INITIAL LOAD ---------------- */
+    /* ---------------- INITIAL LOAD ---------------- */
   useEffect(() => {
     loadInitialData();
     loadBacklogs();
@@ -113,6 +110,11 @@ export default function TaskList() {
       setBacklogs([]);
     }
   }
+
+  // ✅ BUG FIX: Filter backlogs to only show items where the project exists in projectMap
+  const filteredBacklogs = useMemo(() => {
+    return backlogs.filter(item => Object.prototype.hasOwnProperty.call(projectMap, String(item.projectId)));
+  }, [backlogs, projectMap]);
 
   async function createBacklogItem() {
     if (!newBacklogTitle.trim() || !newBacklogProject) return;
@@ -161,7 +163,6 @@ export default function TaskList() {
     }
   }
 
-  // ✅ 2. Updated startEdit()
   function startEdit(item: Backlog) {
     setEditingId(item._id);
     setEditTitle(item.title);
@@ -169,7 +170,6 @@ export default function TaskList() {
     setEditProject(item.projectId);
   }
 
-  // ✅ 3. Updated saveEdit()
   async function saveEdit(id: string) {
     try {
       const updated = await updateBacklog(id, {
@@ -210,7 +210,6 @@ export default function TaskList() {
     }
   }
 
-  // ✅ 5. Improved Type Safety for status config
   function getStatusConfig(status: Status | string) {
     const s = status.toLowerCase();
     if (s === "done") return { label: "Done", style: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400", icon: <CheckCircle2 size={12} /> };
@@ -348,18 +347,17 @@ export default function TaskList() {
             </div>
           )}
 
-          {backlogs.length === 0 ? (
+          {filteredBacklogs.length === 0 ? (
             <div className="text-slate-400 text-sm italic">No backlog items yet</div>
           ) : (
             <div className="space-y-3">
-              {backlogs.map((item: Backlog) => {
+              {filteredBacklogs.map((item: Backlog) => {
                 const p = PRIORITIES[item.priority as Priority] || PRIORITIES.medium;
                 const isEditing = editingId === item._id;
 
                 return (
                   <div key={item._id} className="flex justify-between items-center p-4 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800/50 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-all group">
                     <div className="flex-1 mr-4">
-                      {/* ✅ 4. Updated Edit UI with Project Selector */}
                       {isEditing ? (
                         <div className="flex flex-wrap gap-2 items-center">
                           <input

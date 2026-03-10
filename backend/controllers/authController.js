@@ -1,11 +1,10 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const axios = require("axios"); // ✅ Required for internal microservice calls
+const axios = require("axios"); 
 const { Op } = require("sequelize");
 const { CONFIG } = require("../config/db");
 const { User, Role, Permission } = require("../models");
 
-// Base URL for your MongoDB microservice
 const MONGO_SERVICE_URL = "http://localhost:5001/api/viewer";
 
 const generateTokens = (userId) => {
@@ -55,8 +54,7 @@ exports.login = async (req, res, next) => {
     let roleData = user.Role;
 
     if (isViewer) {
-      // ✅ Override with restricted permissions if flagged in MongoDB
-      permissions = ["view_dashboard", "view_task"];
+        permissions = ["view_dashboard", "view_task"];
       roleData = {
         id: "viewer",
         name: "Viewer"

@@ -21,7 +21,7 @@ exports.getUsers = async (req, res, next) => {
         "isActive"
       ]
     });
-
+    
     res.json(users);
   } catch (err) {
     console.error("Fetch Users Error:", err);
