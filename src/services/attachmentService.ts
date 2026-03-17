@@ -8,7 +8,7 @@ const MONGO_API = import.meta.env.VITE_MONGO_API;
  */
 export async function uploadAttachment(taskId: string, file: File) {
   const formData = new FormData();
-  formData.append("file", file);
+  formData.append("file", file);      
 
   const res = await axios.post(
     `${MONGO_API}/attachments/${taskId}`,

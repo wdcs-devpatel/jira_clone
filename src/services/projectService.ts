@@ -11,10 +11,10 @@ export interface Project {
   userId?: number;
   createdAt?: string;
   updatedAt?: string;
-    teamLeaderId?: number;   // ✅ add this
+    teamLeaderId?: number;   
 
 }
-
+        
 /**
  * GET ALL PROJECTS
  * Fetches projects based on search query and sort order.

@@ -4,10 +4,11 @@ import axios from "axios";
 import { ArrowLeft, CheckCircle2, ShieldAlert } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
-// ✅ UPDATED: Importing modified Status and service functions
+// ✅ UPDATED: Added deleteTask to imports
 import {
   getAllTasks,
   updateTaskStatus,
+  deleteTask,
   Status
 } from "../services/taskService";
 
@@ -89,6 +90,16 @@ export default function KanbanBoard() {
       console.error("Load Tasks Error:", err);
     }
   }
+
+  // ✅ ADDED: Delete Handler for tasks
+  const handleDeleteTask = async (taskId: string | number) => {
+    try {
+      await deleteTask(taskId);
+      await loadTasks(); // refresh board
+    } catch (err) {
+      console.error("Delete Task Error:", err);
+    }
+  };
   
   const handleDragStart = (e: React.DragEvent, taskId: TaskId) => {
     if (!canUpdateStatus) {
@@ -181,7 +192,6 @@ export default function KanbanBoard() {
           </div>
         </div>
 
-        {/* ✅ FIXED: Grid updated to 4 columns (md:grid-cols-4) */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {COLUMNS.map((col) => (
             <div
@@ -196,7 +206,7 @@ export default function KanbanBoard() {
                 tasks={tasks.filter((t) => t.status === col.key)}
                 users={users}
                 onEdit={handleNavigateToTask}
-                onDelete={() => {}}
+                onDelete={handleDeleteTask} // ✅ UPDATED: Passed handleDeleteTask
                 onAddClick={
                   canCreateTask
                     ? () => handleNavigateToTask(null, col.key)

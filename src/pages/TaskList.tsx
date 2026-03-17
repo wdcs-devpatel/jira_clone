@@ -87,6 +87,7 @@ export default function TaskList() {
       setProjectMap(map);
 
       const taskPromises = projectList.map(p => getAllTasks(p.id!));
+      
       const results = await Promise.allSettled(taskPromises);
       const flatTasks = results
         .filter((r): r is PromiseFulfilledResult<Task[]> => r.status === "fulfilled")

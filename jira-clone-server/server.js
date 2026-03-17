@@ -4,6 +4,11 @@ const cors = require("cors");
 const path = require("path");
 const connectDB = require("./config/db");
 
+// RabbitMQ Imports
+const { connectRabbitMQ } = require("./rabbitmq/connection");
+const startActivityConsumer = require("./rabbitmq/activityConsumer");
+const startTimeLogConsumer = require("./rabbitmq/timeConsumer");
+
 /* =================================
 1️⃣ CONFIGURATION & DB
 ================================= */
@@ -73,10 +78,27 @@ app.use((err, req, res, next) => {
 });
 
 /* =================================
-9️⃣ START SERVER
+9️⃣ START SERVER & RABBITMQ
 ================================= */
 const PORT = process.env.PORT || 5001;
 
-app.listen(PORT, () => {
-  console.log(`🚀 Mongo Microservice running on port ${PORT}`);
-});
+const startServer = async () => {
+  try {
+    // Initialize RabbitMQ
+    await connectRabbitMQ();
+
+    // Start background consumers
+    startActivityConsumer();
+    startTimeLogConsumer();
+
+    app.listen(PORT, () => {
+      console.log(`🚀 Mongo Microservice running on port ${PORT}`);
+      console.log(`🐰 RabbitMQ Consumers connected and listening`);
+    });
+  } catch (error) {
+    console.error("❌ Failed to initialize microservice:", error);
+    process.exit(1);
+  }
+};
+
+startServer();

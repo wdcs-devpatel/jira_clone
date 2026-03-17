@@ -11,7 +11,7 @@ export async function getRolesWithPermissions() {
     console.error("Error fetching roles:", error);
     throw error;
   }
-}
+} 
 
 /**
  * GET ALL AVAILABLE PERMISSIONS

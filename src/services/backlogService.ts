@@ -1,7 +1,7 @@
 import axios from "axios";
 
-// Accessing the environment variable for the Mongo API
 const MONGO_API = import.meta.env.VITE_MONGO_API;
+// Accessing the environment variable for the Mongo API
 
 export interface Backlog {
   _id: string;

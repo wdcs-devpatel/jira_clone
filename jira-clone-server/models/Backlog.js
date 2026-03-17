@@ -1,10 +1,5 @@
 const mongoose = require("mongoose");
 
-/**
- * Backlog Schema
- * Defines the structure for items in the project backlog.
- * Timestamps are enabled to automatically track 'createdAt' and 'updatedAt'.
- */
 const backlogSchema = new mongoose.Schema(
   {
     title: {
@@ -29,7 +24,7 @@ const backlogSchema = new mongoose.Schema(
       default: "medium"
     },
 
-    status: {
+    status: { 
       type: String,
       enum: ["todo", "in-progress", "done"],
       default: "todo"
