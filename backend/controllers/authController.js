@@ -5,7 +5,7 @@ const { Op } = require("sequelize");
 const { CONFIG } = require("../config/db");
 const { User, Role, Permission } = require("../models");
 
-const MONGO_SERVICE_URL = "http://localhost:5001/api/viewer";
+const MONGO_SERVICE_URL = process.env.MONGO_SERVICE_URL || "http://localhost:5001/api/viewer";
 
 const generateTokens = (userId) => {
   const accessToken = jwt.sign({ id: userId }, CONFIG.JWT_SECRET, { expiresIn: "1h" });

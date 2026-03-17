@@ -173,10 +173,11 @@ export default function AdminPage() {
 
   // ✅ UPDATED: Fixed handleRoleChange with Cleanup Logic
   const handleRoleChange = async (userId: number, roleId: any) => {
+    const mongoApi = import.meta.env.VITE_MONGO_API || "http://localhost:5002/api";
     try {
       if (roleId === "viewer") {
         // Step A: Assign in MongoDB
-        await axios.post("http://localhost:5001/api/viewer/assign", { userId });
+        await axios.post(`${mongoApi}/viewer/assign`, { userId });
 
         // Update local state immediately
         setUsers(prev =>
@@ -187,7 +188,7 @@ export default function AdminPage() {
         toast.success("Viewer role assigned");
       } else {
         // Step B: ✅ NEW CLEANUP - Remove from MongoDB if switching to SQL role
-        await axios.post("http://localhost:5001/api/viewer/remove", { userId });
+        await axios.post(`${mongoApi}/viewer/remove`, { userId });
 
         // Step C: Update standard SQL role
         await updateUserRole(userId, Number(roleId));

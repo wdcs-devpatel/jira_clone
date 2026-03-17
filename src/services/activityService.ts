@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API = "http://localhost:5001/api/activity";
+const API = `${import.meta.env.VITE_MONGO_API || "http://localhost:5002/api"}/activity`;
 
 export const createActivity = async (activity: any) => {
   const res = await axios.post(API, activity);

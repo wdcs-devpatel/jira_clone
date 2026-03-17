@@ -4,7 +4,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
    ENV CONFIG
 ============================== */
 // ✅ Fixed: This service now strictly points to the Postgres API for Auth & Users
-const BASE_URL = import.meta.env.VITE_POSTGRES_API || "http://localhost:5000/api";
+const BASE_URL = import.meta.env.VITE_POSTGRES_API || "http://localhost:5002/api";
 const AUTH_URL = `${BASE_URL}/auth`;
 
 /* ==============================

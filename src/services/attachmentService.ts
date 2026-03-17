@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const MONGO_API = import.meta.env.VITE_MONGO_API;
+const MONGO_API = import.meta.env.VITE_MONGO_API || "http://localhost:5002/api";
 
 /**
  * UPLOAD ATTACHMENT

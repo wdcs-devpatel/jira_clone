@@ -1,5 +1,5 @@
 import axios from "axios";
-const API = "http://localhost:5001/api";
+const API = import.meta.env.VITE_MONGO_API || "http://localhost:5002/api";
 export async function getCompanies() {
   try {
     const res = await axios.get(`${API}/companies`);

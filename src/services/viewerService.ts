@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API = "http://localhost:5001/api/viewer";
+const API = `${import.meta.env.VITE_MONGO_API || "http://localhost:5002/api"}/viewer`;
 
 /* GET VIEWER ROLE DEFINITION */
 export async function getViewerRole() {
