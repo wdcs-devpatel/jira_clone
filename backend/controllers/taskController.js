@@ -1,4 +1,4 @@
-const { Task, Project, User } = require("../models");
+const { Task, Project, User, Role, Permission } = require("../models");
 const { Op } = require("sequelize");
 
 /* =============================================================
@@ -71,6 +71,17 @@ exports.createTask = async (req, res, next) => {
 
       if (!assigned) {
         return res.status(403).json({ message: "Access denied: You are not part of this project" });
+      }
+    }
+
+    // ✅ VALIDATE ASSIGNEE PERMISSION
+    if (req.body.assigneeId) {
+      const assignee = await User.findByPk(req.body.assigneeId, {
+        include: { model: Role, include: { model: Permission } }
+      });
+      const assigneePerms = assignee?.Role?.Permissions?.map(p => p.name) || [];
+      if (!assigneePerms.includes("assign_permissions")) {
+        return res.status(400).json({ message: "Selected user cannot be assigned tasks" });
       }
     }
 
@@ -179,6 +190,17 @@ exports.updateTask = async (req, res, next) => {
         Number(task.assigneeId) !== Number(req.user.id) && 
         Number(task.Project?.userId) !== Number(req.user.id)) {
       return res.status(403).json({ message: "Unauthorized to update this task" });
+    }
+
+    // ✅ VALIDATE ASSIGNEE PERMISSION
+    if (req.body.assigneeId) {
+      const assignee = await User.findByPk(req.body.assigneeId, {
+        include: { model: Role, include: { model: Permission } }
+      });
+      const assigneePerms = assignee?.Role?.Permissions?.map(p => p.name) || [];
+      if (!assigneePerms.includes("assign_permissions")) {
+        return res.status(400).json({ message: "Selected user cannot be assigned tasks" });
+      }
     }
 
     await task.update(req.body);

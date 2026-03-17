@@ -47,7 +47,7 @@ import { createTimeLog, getTimeLogs } from "../services/timeLogService";
 import { PRIORITY_LIST, Priority } from "../utils/constants";
 
 export default function TaskDetails() {
-  const { user } = useAuth();
+  const { user, permissions } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { projectId, taskId } = useParams<{ projectId: string; taskId: string }>();
@@ -444,9 +444,23 @@ export default function TaskDetails() {
                 {/* Assignee Selection */}
                 <div className="pt-8 border-t border-slate-100 dark:border-slate-800">
                   <div className="flex items-center gap-2 mb-4"><UserIcon size={14} className="text-slate-400" /><label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Assignee</label></div>
-                  <select value={assigneeId || ""} onChange={(e) => setAssigneeId(e.target.value)} className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 dark:bg-slate-900 text-xs font-black uppercase tracking-widest outline-none transition-all appearance-none cursor-pointer">
+                  <select 
+                    value={assigneeId || ""} 
+                    onChange={(e) => setAssigneeId(e.target.value)} 
+                    disabled={!permissions.includes("assign_permissions")}
+                    className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 dark:bg-slate-900 text-xs font-black uppercase tracking-widest outline-none transition-all appearance-none cursor-pointer"
+                  >
                     <option value="">Unassigned</option>
-                    {users.map((u) => <option key={u.id} value={u.id}>{u.username}</option>)}
+                    {users
+                      .filter((u) => {
+                        const userPerms = u.Role?.Permissions?.map((p: any) => p.name) || [];
+                        return userPerms.includes("assign_permissions");
+                      })
+                      .map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.username}
+                        </option>
+                      ))}
                   </select>
                 </div>
 

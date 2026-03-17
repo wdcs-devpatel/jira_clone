@@ -1,0 +1,31 @@
+Jira Clone Project Features
+
+User Roles & Admin Control
+- Admin can view all users in the system
+- Admin can activate, deactivate, or delete user accounts
+- Different roles like Project Manager, Team Lead, QA, and Developer are supported
+- Permissions can be adjusted for each role
+- Admin role is fixed and cannot be modified
+- Users can be assigned to different organizations
+
+Task Board (Kanban)
+- Tasks are organized into columns: To Do, In Progress, Review, Done
+- Tasks can be moved using drag and drop
+- Status can be updated quickly
+- Search feature is available to find tasks
+
+Task Details
+- Each task includes title, description, and priority (critical,High, Medium, Low)
+- Subtasks can be created using checklists
+- Subtasks can be marked as completed
+- Task assignment is based on user roles and permissions
+
+Time Tracking & Activity Logs
+- Users can log time spent on tasks (e.g., 2h 30m, 45m)
+- All actions are recorded in activity logs
+- Logs show updates like status changes, edits, and file uploads
+
+Comments & Attachments
+- Users can add, edit, and delete comments on tasks
+- Files can be attached to tasks
+- Attachments are stored and managed in the backend

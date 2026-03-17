@@ -4,13 +4,15 @@ import { LayoutDashboard, Kanban, ListTodo, Users } from "lucide-react";
 export default function Sidebar() {
   const token = localStorage.getItem("token");
 
+  const activeProjectId = localStorage.getItem("currentProjectId");
+
   if (!token) return null;
 
   const navItems = [
     { to: "/dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
     { to: "/kanban", label: "Kanban", icon: <Kanban size={18} /> },
     { to: "/tasks", label: "Task List", icon: <ListTodo size={18} /> },
-    { to: "/team", label: "Team", icon: <Users size={18} /> },
+    ...(activeProjectId ? [{ to: `/team/${activeProjectId}`, label: "Team", icon: <Users size={18} /> }] : []),
   ];
 
   return (

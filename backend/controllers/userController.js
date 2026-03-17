@@ -9,7 +9,11 @@ exports.getUsers = async (req, res, next) => {
     const users = await User.findAll({
       include: {
         model: Role,
-        attributes: ["id", "name"]
+        attributes: ["id", "name"],
+        include: {
+          model: Permission,
+          through: { attributes: [] }
+        }
       },
       attributes: [
         "id",

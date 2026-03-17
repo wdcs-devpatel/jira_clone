@@ -81,9 +81,9 @@ export default function Navbar() {
             </NavLink>
           
 
-          {!isAdmin && (
+          {!isAdmin && activeProjectId && (
             <NavLink
-              to={`/team/${activeProjectId || 1}`}
+              to={`/team/${activeProjectId}`}
               className={getLinkClass}
             >
               Team

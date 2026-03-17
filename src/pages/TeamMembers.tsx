@@ -49,7 +49,14 @@ export default function TeamMembers() {
 
       const fetchedOwnerId = Number(projectRes.data.userId || projectRes.data.ownerId);
       setOwnerId(fetchedOwnerId);
-      const memberIds: number[] = membersRes.data.map((mid: any) => Number(mid));
+
+      const currentTeam = membersRes.data.map((m: any) => ({
+        ...m,
+        id: Number(m.id),
+        name: m.firstName || m.username || `User #${m.id}`,
+        position: m.Role?.name || m.position || "Developer"
+      }));
+      setTeam(currentTeam);
 
       try {
         const usersRes = await api.get(`/users`);
@@ -57,13 +64,10 @@ export default function TeamMembers() {
           ...u,
           id: Number(u.id),
           name: u.firstName || u.username || `User #${u.id}`,
-          position: u.position || "Developer" 
+          position: u.Role?.name || u.position || "Developer" 
         }));
 
         setAllUsers(processedUsers);
-        const currentTeam = processedUsers.filter((u: User) => memberIds.includes(u.id));
-        setTeam(currentTeam);
-        
       } catch (err: any) {
         console.warn("Global users restricted; check RBAC permissions.");
       }

@@ -261,9 +261,11 @@ export default function AdminPage() {
               <p className="text-slate-500 font-medium italic">RBAC Engine & System Hierarchy</p>
             </div>
           </div>
-          <button onClick={() => navigate("/signup")} className="flex items-center gap-3 bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg active:scale-95">
-            <UserPlus size={18} /> Create Personnel
-          </button>
+          {permissions.includes("manage_users") && (
+            <button onClick={() => navigate("/signup")} className="flex items-center gap-3 bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg active:scale-95">
+              <UserPlus size={18} /> Create Personnel
+            </button>
+          )}
         </div>
 
         {/* USERS TABLE */}
@@ -302,9 +304,10 @@ export default function AdminPage() {
                       
                       <td className="px-10 py-5">
                         <select
+                          disabled={!permissions.includes("manage_users")}
                           value={u.mongoRole === "viewer" ? "viewer" : (u.Role?.id || "")}
                           onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                          className="bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-2 text-[10px] font-black uppercase outline-none shadow-sm"
+                          className="bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-2 text-[10px] font-black uppercase outline-none shadow-sm disabled:opacity-50"
                         >
                           {roles.filter(r => r.id !== "viewer").map((r) => (
                             <option key={r.id} value={r.id}>{r.name}</option>
@@ -314,10 +317,20 @@ export default function AdminPage() {
                       </td>
 
                       <td className="px-10 py-5 text-right flex items-center justify-end gap-2">
-                        <button onClick={() => handleToggleStatus(u.id)} className={`p-2 rounded-xl ${u.isActive ? 'text-amber-500' : 'text-emerald-500'}`}>
+                        <button 
+                          disabled={!permissions.includes("manage_users")} 
+                          onClick={() => handleToggleStatus(u.id)} 
+                          className={`p-2 rounded-xl ${u.isActive ? 'text-amber-500' : 'text-emerald-500'} disabled:opacity-30`}
+                        >
                           {u.isActive ? <UserX size={18}/> : <UserCheck size={18}/>}
                         </button>
-                        <button onClick={() => handleDeleteUser(u.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-xl"><Trash2 size={18}/></button>
+                        <button 
+                          disabled={!permissions.includes("manage_users")} 
+                          onClick={() => handleDeleteUser(u.id)} 
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-xl disabled:opacity-30"
+                        >
+                          <Trash2 size={18}/>
+                        </button>
                       </td>
                     </tr>
                   ))}

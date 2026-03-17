@@ -127,6 +127,20 @@ export default function Dashboard() {
 
   const progress = stats.total === 0 ? 0 : Math.round((stats.completed / stats.total) * 100);
 
+  if (!permissions.includes("view_dashboard")) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0b1220] p-6">
+        <div className="text-center space-y-4 bg-white dark:bg-slate-900 p-10 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl max-w-md">
+          <div className="mx-auto w-16 h-16 bg-red-50 dark:bg-red-900/20 rounded-2xl flex items-center justify-center text-red-500 mb-4">
+            <AlertCircle size={32} />
+          </div>
+          <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Access Denied</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">You do not have permission to view the Dashboard workspace.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0b1220] p-6 md:p-10 transition-colors duration-300">
       <div className="max-w-7xl mx-auto space-y-10">

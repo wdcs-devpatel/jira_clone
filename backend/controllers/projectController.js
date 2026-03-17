@@ -1,4 +1,4 @@
-const { Project, Task, User } = require("../models");
+const { Project, Task, User, Role } = require("../models");
 const { Op } = require("sequelize");
 
 /* =============================================================
@@ -297,7 +297,13 @@ exports.getMembers = async (req, res, next) => {
     const members = project.members || [];
     const allMembers = [...new Set([project.userId, ...members])];
 
-    res.json(allMembers);
+    const memberDetails = await User.findAll({
+      where: { id: allMembers },
+      attributes: ["id", "username", "firstName", "lastName", "email", "phone", "isActive"],
+      include: [{ model: Role, attributes: ["name"] }]
+    });
+
+    res.json(memberDetails);
   } catch (err) {
     next(err);
   }
