@@ -3,12 +3,12 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 /* ==============================
    ENV CONFIG
 ============================== */
-// ✅ Fixed: This service now strictly points to the Postgres API for Auth & Users
-const BASE_URL = import.meta.env.VITE_POSTGRES_API || "http://localhost:5002/api";
+// ✅ All requests now route through the API Gateway
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5002/api";
 const AUTH_URL = `${BASE_URL}/auth`;
 
 /* ==============================
-   AXIOS INSTANCE (Postgres Only)
+   AXIOS INSTANCE
 ============================== */
 export const api = axios.create({
   baseURL: BASE_URL,
@@ -89,7 +89,7 @@ api.interceptors.response.use(
     ------------------------------ */
     if (error.response?.status === 403) {
       console.error(
-        "RBAC Forbidden: User lacks required permissions for this action on the Postgres server."
+        "RBAC Forbidden: User lacks required permissions for this action."
       );
     }
 
@@ -98,7 +98,7 @@ api.interceptors.response.use(
 );
 
 /* ==============================
-   AUTH ACTIONS (Postgres Backend)
+   AUTH ACTIONS
 ============================== */
 
 export const loginUser = async (

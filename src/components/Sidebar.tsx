@@ -1,10 +1,23 @@
+import { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import { LayoutDashboard, Kanban, ListTodo, Users } from "lucide-react";
 
 export default function Sidebar() {
   const token = localStorage.getItem("token");
+  
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(
+    localStorage.getItem("currentProjectId")
+  );
 
-  const activeProjectId = localStorage.getItem("currentProjectId");
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const storedId = localStorage.getItem("currentProjectId");
+      if (storedId !== activeProjectId) {
+        setActiveProjectId(storedId);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [activeProjectId]);
 
   if (!token) return null;
 

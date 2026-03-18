@@ -36,7 +36,7 @@ export default function TeamMembers() {
   const isAdmin = permissions.includes("view_admin_panel");
   const canViewAllUsers = permissions.includes("view_users");
   const isOwner = Number(loggedInUser?.id) === Number(ownerId);
-  const canManageMembers = isOwner || isAdmin;
+  const canManageMembers = permissions.includes("manage_users");
 
   const load = useCallback(async (id: number) => {
     try {
@@ -121,7 +121,7 @@ export default function TeamMembers() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-[#0b1220]">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 dark:bg-[#0b1220]">
         <div className="animate-pulse flex flex-col items-center gap-4">
           <div className="w-12 h-12 bg-indigo-500 rounded-full"></div>
           <p className="text-slate-500 font-bold uppercase text-xs tracking-widest">Syncing Squad...</p>
@@ -166,18 +166,30 @@ export default function TeamMembers() {
             <h2 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Current Members</h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {team.map(u => (
-              <MemberCard
-                key={u.id}
-                user={u}
-                isLeader={Number(u.id) === Number(ownerId)}
-                canManage={canManageMembers} 
-                onDetails={()=>setSelectedUser(u)}
-                onRemove={(e: any)=>removeMember(e, u.id)}
-              />
-            ))}
-          </div>
+          {!canViewAllUsers ? (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-12 text-center flex flex-col items-center">
+              <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-400 mb-4">
+                <Shield size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Restricted Access</h3>
+              <p className="text-slate-500 max-w-sm mx-auto text-sm">
+                You do not have the <span className="font-bold text-indigo-500">view users</span> permission to see the members of this project.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+              {team.map(u => (
+                <MemberCard
+                  key={u.id}
+                  user={u}
+                  isLeader={Number(u.id) === Number(ownerId)}
+                  canManage={canManageMembers} 
+                  onDetails={()=>setSelectedUser(u)}
+                  onRemove={(e: any)=>removeMember(e, u.id)}
+                />
+              ))}
+            </div>
+          )}
         </section>
 
         {/* --- ADD TALENT --- */}

@@ -7,7 +7,6 @@ const cors = require('cors');
 const app = express();
 
 app.use(cors());
-
 // 📝 1. Logging Middleware (Request Inspection)
 app.use((req, res, next) => {
   console.log(`[Gateway] ${req.method} ${req.url}`);

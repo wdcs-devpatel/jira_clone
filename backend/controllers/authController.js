@@ -44,10 +44,10 @@ exports.login = async (req, res, next) => {
     // ✅ Step 2: CHECK VIEWER STATUS VIA INTERNAL API CALL
     let isViewer = false;
     try {
-      const viewerRes = await axios.get(`${MONGO_SERVICE_URL}/check/${user.id}`);
+      const viewerRes = await axios.get(`${MONGO_SERVICE_URL}/check/${user.id}`, { timeout: 2000 });
       isViewer = viewerRes.data.isViewer;
     } catch (apiErr) {
-      console.error("⚠️ Mongo Service unreachable. Falling back to SQL roles.");
+      console.error("⚠️ Mongo Service unreachable or timed out. Falling back to SQL roles.", apiErr.message);
     }
 
     let permissions = user.Role?.Permissions?.map(p => p.name) || [];

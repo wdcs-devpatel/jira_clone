@@ -12,13 +12,13 @@ const BASE_URL = "/tasks";
 export type Status = "To Do" | "In Progress" | "QA" | "Done";
 
 /* =============================================================
-   FETCHING LOGIC (Postgres Backend)
+   FETCHING LOGIC
 ============================================================= */
 
 /**
  * GET ALL TASKS
- * Redirected to Postgres: /api/tasks/project/:projectId
- * * ✅ NEW: Added logic to handle Postgres JSON-as-string behavior. 
+ * Routes to: /api/tasks/project/:projectId
+ * * ✅ NEW: Added logic to handle JSON-as-string behavior. 
  * This maps through the fetched tasks and ensures 'subtasks' and 'comments' 
  * are converted from strings back into JSON arrays so the UI can render them.
  */
@@ -43,7 +43,7 @@ export async function getAllTasks(projectId?: string | number) {
 
 /**
  * GET SINGLE TASK BY ID
- * Fetches from Postgres database.
+ * Routes to: /api/tasks/:id
  * * ✅ NEW: Similar to getAllTasks, this ensures that the individual task 
  * loaded into the Task Configuration page has 'subtasks' and 'comments' 
  * pre-parsed into arrays, preventing "map is not a function" errors in the UI.
@@ -66,12 +66,12 @@ export async function getTaskById(taskId: string | number) {
 }
 
 /* =============================================================
-   ACTION LOGIC (Postgres Backend)
+   ACTION LOGIC
 ============================================================= */
 
 /**
  * CREATE TASK
- * Redirected to Postgres: POST /api/tasks/project/:projectId
+ * Routes to: POST /api/tasks/project/:projectId
  */
 export async function addTask(task: any, projectId: string | number) {
   const res = await api.post(`${BASE_URL}/project/${projectId}`, task);
@@ -80,7 +80,7 @@ export async function addTask(task: any, projectId: string | number) {
 
 /**
  * UPDATE TASK STATUS
- * Redirected to Postgres: PATCH /api/tasks/:id/status
+ * Routes to: PATCH /api/tasks/:id/status
  */
 export async function updateTaskStatus(taskId: string | number, status: Status) {
   const res = await api.patch(`${BASE_URL}/${taskId}/status`, { status });
@@ -89,7 +89,7 @@ export async function updateTaskStatus(taskId: string | number, status: Status) 
 
 /**
  * UPDATE TASK
- * Redirected to Postgres: PUT /api/tasks/:id
+ * Routes to: PUT /api/tasks/:id
  * This sends the full payload including stringified subtasks/comments back to the server.
  */
 export async function updateTask(taskId: string | number, updates: any) {
@@ -99,7 +99,7 @@ export async function updateTask(taskId: string | number, updates: any) {
 
 /**
  * DELETE TASK
- * Redirected to Postgres: DELETE /api/tasks/:id
+ * Routes to: DELETE /api/tasks/:id
  */
 export async function deleteTask(taskId: string | number) {
   const res = await api.delete(`${BASE_URL}/${taskId}`);
@@ -108,7 +108,7 @@ export async function deleteTask(taskId: string | number) {
 
 /**
  * SEARCH TASKS
- * Queries the Postgres backend for matching task titles.
+ * Queries the backend for matching task titles.
  */
 export async function searchTasks(query: string) {
   const res = await api.get(`${BASE_URL}/search`, { params: { q: query } });

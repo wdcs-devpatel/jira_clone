@@ -173,7 +173,7 @@ export default function AdminPage() {
 
   // ✅ UPDATED: Fixed handleRoleChange with Cleanup Logic
   const handleRoleChange = async (userId: number, roleId: any) => {
-    const mongoApi = import.meta.env.VITE_MONGO_API || "http://localhost:5002/api";
+    const mongoApi = import.meta.env.VITE_API_BASE_URL || "http://localhost:5002/api";
     try {
       if (roleId === "viewer") {
         // Step A: Assign in MongoDB

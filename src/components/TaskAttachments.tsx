@@ -97,8 +97,8 @@ export default function TaskAttachments({
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4 mt-8">
 
           {attachments.map((file) => {
-            const baseUrl = import.meta.env.VITE_MONGO_API 
-              ? import.meta.env.VITE_MONGO_API.replace('/api', '') 
+            const baseUrl = import.meta.env.VITE_API_BASE_URL 
+              ? import.meta.env.VITE_API_BASE_URL.replace('/api', '') 
               : "http://localhost:5002";
             const fileUrl = `${baseUrl}${file.fileUrl}`;
             const isImage = file.filename.match(/\.(jpg|jpeg|png|gif|webp)$/i);

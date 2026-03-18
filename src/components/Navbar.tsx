@@ -32,9 +32,27 @@ export default function Navbar() {
   const canViewAdmin = isAdmin;
 
   useEffect(() => {
-    const storedId = localStorage.getItem("currentProjectId");
-    setActiveProjectId(storedId);
-  }, [location]);
+    const handleStorageChange = () => {
+      const storedId = localStorage.getItem("currentProjectId");
+      if (storedId) setActiveProjectId(storedId);
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    handleStorageChange(); // sync on mount
+
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
+
+  // Poll localStorage as a fallback since React Router doesn't always trigger 'storage' events on the same window
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const storedId = localStorage.getItem("currentProjectId");
+      if (storedId !== activeProjectId) {
+        setActiveProjectId(storedId);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [activeProjectId]);
 
   const handleLogout = () => {
     logout();
