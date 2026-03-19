@@ -39,7 +39,7 @@ import {
 import { createBacklog } from "../services/backlogService"; 
 
 // ✅ ACTIVITY SERVICE: Logging Logic
-import { createActivity, getTaskActivity } from "../services/activityService";
+import { getTaskActivity } from "../services/activityService";
 
 // ✅ ACTIVITY SERVICE: Work Tracking Logic
 import { createTimeLog, getTimeLogs } from "../services/timeLogService";
@@ -162,12 +162,6 @@ export default function TaskDetails() {
         createdBy: 1
       });
       await deleteTask(taskId);
-      await createActivity({
-        taskId,
-        user: user?.username || "User",
-        action: "Moved to Backlog",
-        details: title
-      });
       toast.success("Task moved back to backlog");
       navigate("/tasks");
     } catch (err) {
@@ -196,16 +190,10 @@ export default function TaskDetails() {
       });
       const logs = await getTimeLogs(taskId);
       setTimeLogs(logs);
-      await createActivity({
-        taskId,
-        user: user?.username || "User",
-        action: "Time Logged",
-        details: timeSpentInput
-      });
       refreshActivities();
       setTimeSpentInput("");
       setStartDate("");
-      setShowTimeModal(false);
+      setShowTimeModal(false);``
       toast.success("Work time recorded");
     } catch (err) {
       toast.error("Failed to log time");
@@ -229,7 +217,6 @@ export default function TaskDetails() {
     setSubtasks(updated);
     setNewSubtask("");
     if (!isCreateMode) {
-      await createActivity({ taskId: taskId!, user: user?.username || "User", action: "Subtask Added", details: newSubtask });
       refreshActivities();
     }
   }
@@ -239,7 +226,6 @@ export default function TaskDetails() {
     const updated = subtasks.map((s) => s.id === id ? { ...s, completed: !s.completed } : s);
     setSubtasks(updated);
     if (!isCreateMode && subtask) {
-      await createActivity({ taskId: taskId!, user: user?.username || "User", action: `Subtask ${!subtask.completed ? 'Completed' : 'Reopened'}`, details: subtask.title });
       refreshActivities();
     }
   }
@@ -249,7 +235,6 @@ export default function TaskDetails() {
     const updated = [...comments, { author: user?.username || "User", text: newComment, createdAt: new Date() }];
     setComments(updated);
     if (!isCreateMode) {
-      await createActivity({ taskId: taskId!, user: user?.username || "User", action: "Comment Added", details: newComment });
       refreshActivities();
     }
     setNewComment("");
@@ -259,7 +244,7 @@ export default function TaskDetails() {
     const commentToDelete = comments[index];
     setComments(comments.filter((_, i) => i !== index));
     if (!isCreateMode) {
-      createActivity({ taskId: taskId!, user: user?.username || "User", action: "Comment Deleted", details: commentToDelete.text.substring(0, 20) + "..." }).then(() => refreshActivities());
+      refreshActivities();
     }
   }
 
@@ -275,7 +260,7 @@ export default function TaskDetails() {
     setComments(updated);
     setEditingCommentIndex(null);
     if (!isCreateMode) {
-      createActivity({ taskId: taskId!, user: user?.username || "User", action: "Comment Edited", details: editCommentText.substring(0, 20) + "..." }).then(() => refreshActivities());
+      refreshActivities();
     }
   }
 
@@ -290,7 +275,6 @@ export default function TaskDetails() {
     if (!selectedFile || !taskId) return;
     try {
       await uploadAttachment(taskId, selectedFile);
-      await createActivity({ taskId, user: user?.username || "User", action: "File Uploaded", details: selectedFile.name });
       setSelectedFile(null);
       const mongoFiles = await getAttachments(taskId);
       setAttachments(mongoFiles || []);
@@ -304,9 +288,6 @@ export default function TaskDetails() {
     try {
       await deleteAttachment(fileId);
       setAttachments(attachments.filter(a => a._id !== fileId));
-      if (fileToDelete) {
-        await createActivity({ taskId: taskId!, user: user?.username || "User", action: "Attachment Removed", details: fileToDelete.filename });
-      }
       refreshActivities();
       toast.success("Attachment removed");
     } catch (err) { toast.error("Delete failed"); }
@@ -316,11 +297,9 @@ export default function TaskDetails() {
     try {
       const taskPayload = { title, description, priority, status, assigneeId, comments: JSON.stringify(comments), subtasks: JSON.stringify(subtasks) };
       if (isCreateMode) {
-        const task = await addTask(taskPayload, Number(projectId));
-        await createActivity({ taskId: task.id, user: user?.username || "User", action: "Task Created" });
+        await addTask(taskPayload, Number(projectId));
       } else {
         await updateTask(taskId!, taskPayload);
-        await createActivity({ taskId: taskId!, user: user?.username || "User", action: "Task Updated", details: `Priority: ${priority}` });
       }
       navigate(`/kanban/${projectId}`);
       toast.success("Task saved successfully");
