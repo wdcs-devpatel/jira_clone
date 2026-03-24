@@ -37,6 +37,27 @@ api.interceptors.request.use(
    - Auto refresh token via Postgres Auth server
    - Safe logout on session failure
 ============================== */
+/**
+ * REFRESH TOKEN
+ * Standalone function to manually or automatically trigger a token rotate.
+ */
+export const refreshToken = async () => {
+  const refreshToken = localStorage.getItem("refreshToken");
+  if (!refreshToken) throw new Error("No refresh token available");
+
+  const refreshResponse = await axios.post(`${AUTH_URL}/refresh`, {
+    refreshToken,
+  });
+
+  const { accessToken, refreshToken : newRefreshToken } = refreshResponse.data;
+
+  // Save new tokens locally
+  localStorage.setItem("accessToken", accessToken);
+  localStorage.setItem("refreshToken", newRefreshToken);
+
+  return accessToken;
+};
+
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<any>) => {
@@ -57,27 +78,13 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refreshToken = localStorage.getItem("refreshToken");
-        if (!refreshToken) throw new Error("No refresh token available");
+        const accessToken = await refreshToken();
 
-        // Use standard axios for the refresh call to avoid interceptor loops
-        const refreshResponse = await axios.post(`${AUTH_URL}/refresh`, {
-          refreshToken,
-        });
-
-        const { accessToken, refreshToken: newRefreshToken } =
-          refreshResponse.data;
-
-        // Save new tokens locally
-        localStorage.setItem("accessToken", accessToken);
-        localStorage.setItem("refreshToken", newRefreshToken);
-
-        // Retry the original request with the new Postgres token
+        // Retry the original request with the new token
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return api(originalRequest);
       } catch (refreshError) {
         console.error("Refresh token failed. Logging out...");
-
         localStorage.clear();
         window.location.href = "/";
         return Promise.reject(refreshError);

@@ -1,7 +1,4 @@
-import axios from "axios";
-
-const MONGO_API = import.meta.env.VITE_API_BASE_URL;
-// Accessing the environment variable for the Mongo API
+import { api } from "./authService";
 
 export interface Backlog {
   _id: string;
@@ -16,7 +13,7 @@ export interface Backlog {
    GET BACKLOGS
 ============================= */
 export async function getBacklogs(projectId?: number) {
-  const res = await axios.get(`${MONGO_API}/backlogs`, {
+  const res = await api.get("/backlogs", {
     params: { projectId }
   });
 
@@ -27,7 +24,7 @@ export async function getBacklogs(projectId?: number) {
    CREATE BACKLOG
 ============================= */
 export async function createBacklog(data: Partial<Backlog>) {
-  const res = await axios.post(`${MONGO_API}/backlogs`, data);
+  const res = await api.post("/backlogs", data);
   return res.data;
 }
 
@@ -35,7 +32,7 @@ export async function createBacklog(data: Partial<Backlog>) {
    UPDATE BACKLOG
 ============================= */
 export async function updateBacklog(id: string, data: Partial<Backlog>) {
-  const res = await axios.put(`${MONGO_API}/backlogs/${id}`, data);
+  const res = await api.put(`/backlogs/${id}`, data);
   return res.data;
 }
 
@@ -43,6 +40,6 @@ export async function updateBacklog(id: string, data: Partial<Backlog>) {
    DELETE BACKLOG
 ============================= */
 export async function deleteBacklog(id: string) {
-  const res = await axios.delete(`${MONGO_API}/backlogs/${id}`);
+  const res = await api.delete(`/backlogs/${id}`);
   return res.data;
 }

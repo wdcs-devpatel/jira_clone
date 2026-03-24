@@ -5,13 +5,17 @@ interface AuthContextType {
   token: string | null;
   user: User | null;
   permissions: string[]; // Added for direct access in components
-  login: (
+  showTimeoutPrompt: boolean;
+  triggerRefresh: () => Promise<void>;
+  login: (  
     tokens: { accessToken: string; refreshToken: string },
     userData: User
   ) => void;
   logout: () => void;
   updateUser: (updated: Partial<User>) => void;
 }
+
+import { refreshToken as apiRefreshToken } from "../services/authService";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -24,6 +28,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const u = localStorage.getItem("currentUser");
     return u ? JSON.parse(u) : null;
   });
+
+  const [showTimeoutPrompt, setShowTimeoutPrompt] = useState(false);
 
   // Derived state for easier permission checks throughout the app
   const [permissions, setPermissions] = useState<string[]>(user?.permissions || []);
@@ -41,12 +47,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("storage", syncAuth);
   }, []);
 
+  // ⏰ Timeout Timer: Triggers Warning 5 minutes before 1 hour runs out.
+  useEffect(() => {
+    if (!token) return;
+
+    const warningTime = 55 * 60 * 1000; // 55 minutes
+    
+    // FOR TESTING: 10 seconds (uncomment below for easy verified testing)
+    // const warningTime = 10 * 1000; 
+
+    const timer = setTimeout(() => {
+      setShowTimeoutPrompt(true);
+    }, warningTime);
+
+    return () => clearTimeout(timer);
+  }, [token]);
+
   /**
    * LOGIN
    * Properly maps the backend response into a safe RBAC-compliant user object.
    */
   const login = (
-    tokens: { accessToken: string; refreshToken: string },
+    tokens: { accessToken: string ; refreshToken: string },
     userData: User
   ) => {
     localStorage.setItem("accessToken", tokens.accessToken);
@@ -66,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     localStorage.setItem("currentUser", JSON.stringify(safeUser));
-    setToken(tokens.accessToken);
+    setToken(tokens.accessToken); 
     setUser(safeUser);
     setPermissions(safeUser.permissions);
 
@@ -87,6 +109,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   /**
+   * TRIGGER REFRESH
+   * Manually refreshes token on user consent
+   */
+  const triggerRefresh = async () => {
+    try {
+      await apiRefreshToken();
+      setShowTimeoutPrompt(false);
+      
+      // Update local token state to reset the timer effect bucket
+      setToken(localStorage.getItem("accessToken"));
+    } catch (err) {
+      console.error("Manual refresh failed. Logging out...");
+      logout();
+    }
+  };
+
+  /**
    * UPDATE USER
    * Merges profile updates or permission changes into the current session.
    */
@@ -104,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ token, user, permissions, login, logout, updateUser }}>
+    <AuthContext.Provider value={{ token, user, permissions, showTimeoutPrompt, triggerRefresh, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

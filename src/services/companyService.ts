@@ -1,8 +1,8 @@
-import axios from "axios";
-const API = import.meta.env.VITE_API_BASE_URL || "http://localhost:5002/api";
+import { api } from "./authService";
+
 export async function getCompanies() {
   try {
-    const res = await axios.get(`${API}/companies`);
+    const res = await api.get("/companies");
     return res.data;
   } catch (error) {
     console.error("Failed to fetch companies:", error);
@@ -12,7 +12,7 @@ export async function getCompanies() {
 
 export async function getUserCompanies() {
   try {
-    const res = await axios.get(`${API}/companies/users`);
+    const res = await api.get("/companies/users");
     return res.data;
   } catch (error) {
     console.error("Failed to fetch user companies:", error);
@@ -22,7 +22,7 @@ export async function getUserCompanies() {
 
 export async function updateUserCompany(userId: number, company: string) {
   try {
-    const res = await axios.put(`${API}/companies/user/${userId}`, { company });
+    const res = await api.put(`/companies/user/${userId}`, { company });
     return res.data;
   } catch (error) {
     console.error("Failed to update company:", error);
@@ -33,7 +33,7 @@ export async function updateUserCompany(userId: number, company: string) {
 /* NEW FUNCTION */
 export async function getUserCompany(userId: number) {
   try {
-    const res = await axios.get(`${API}/companies/users`);
+    const res = await api.get("/companies/users");
     const mapping = res.data.find((m: any) => m.userId === userId);
     return mapping?.company || "WebClues";
   } catch (err) {

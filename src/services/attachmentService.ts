@@ -1,6 +1,4 @@
-import axios from "axios";
-
-const MONGO_API = import.meta.env.VITE_API_BASE_URL || "http://localhost:5002/api";
+import { api } from "./authService";
 
 /**
  * UPLOAD ATTACHMENT
@@ -10,12 +8,11 @@ export async function uploadAttachment(taskId: string, file: File) {
   const formData = new FormData();
   formData.append("file", file);      
 
-  const res = await axios.post(
-    `${MONGO_API}/attachments/${taskId}`,
+  const res = await api.post(
+    `/attachments/${taskId}`,
     formData,
     {
       headers: {
-        Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         "Content-Type": "multipart/form-data",
       },
     }
@@ -29,10 +26,7 @@ export async function uploadAttachment(taskId: string, file: File) {
  * Fetches all attachment metadata associated with a specific taskId.
  */
 export async function getAttachments(taskId: string) {
-  const res = await axios.get(
-    `${MONGO_API}/attachments/${taskId}`,
-  );
-
+  const res = await api.get(`/attachments/${taskId}`);
   return res.data;
 }
 
@@ -41,10 +35,6 @@ export async function getAttachments(taskId: string) {
  * Removes the attachment from MongoDB and deletes the physical file from the server.
  */
 export async function deleteAttachment(id: string) {
-  const res = await axios.delete(
-    `${MONGO_API}/attachments/${id}`,
-   
-  );
-
+  const res = await api.delete(`/attachments/${id}`);
   return res.data;
 }

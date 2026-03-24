@@ -1,13 +1,11 @@
-import axios from "axios";
-
-const API = `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5002/api"}/activity`;
+import { api } from "./authService";
 
 export const createActivity = async (activity: any) => {
-  const res = await axios.post(API, activity);
+  const res = await api.post("/activity", activity);
   return res.data;
 };
 
 export const getTaskActivity = async (taskId: string) => {
-  const res = await axios.get(`${API}/${taskId}`);
+  const res = await api.get(`/activity/${taskId}`);
   return res.data;
 };

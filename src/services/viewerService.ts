@@ -1,11 +1,9 @@
-import axios from "axios";
-
-const API = `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5002/api"}/viewer`;
+import { api } from "./authService";
 
 /* GET VIEWER ROLE DEFINITION */
 export async function getViewerRole() {
   try {
-    const res = await axios.get(API);
+    const res = await api.get("/viewer");
     return res.data;
   } catch (err) {
     console.error("Failed to fetch viewer role");
@@ -16,7 +14,7 @@ export async function getViewerRole() {
 /* CHECK IF USER IS VIEWER */
 export async function checkViewer(userId: number) {
   try {
-    const res = await axios.get(`${API}/check/${userId}`);
+    const res = await api.get(`/viewer/check/${userId}`);
     return res.data.isViewer;
   } catch (err) {
     console.error("Failed to check viewer role");

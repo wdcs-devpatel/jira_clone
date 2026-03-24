@@ -1,42 +1,16 @@
-import { useState } from "react";
 import AppRoutes from "./routes/AppRoutes";
-import useSessionTimer from "./hooks/useSessionTimer";
 import SessionPopup from "./components/SessionPopup";
-import { api } from "./services/authService";
+import { useAuth } from "./context/AuthContext";
 
 function App() {
-  const [showPopup, setShowPopup] = useState(false);
-
-  useSessionTimer(() => setShowPopup(true));
-
-  const stayLoggedIn = async () => {
-    try {
-      const refreshToken = localStorage.getItem("refreshToken");
-
-      const res = await api.post("/auth/refresh", { refreshToken });
-
-      localStorage.setItem("accessToken", res.data.accessToken);
-
-      if (res.data.refreshToken)
-        localStorage.setItem("refreshToken", res.data.refreshToken);
-
-      setShowPopup(false);
-    } catch {
-      logoutNow();
-    }
-  };
-
-  const logoutNow = () => {
-    localStorage.clear();
-    window.location.href = "/";
-  };
+  const { showTimeoutPrompt, triggerRefresh, logout } = useAuth();
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors duration-300">
       <AppRoutes />
 
-      {showPopup && (
-        <SessionPopup onStay={stayLoggedIn} onLogout={logoutNow} />
+      {showTimeoutPrompt && (
+        <SessionPopup onStay={triggerRefresh} onLogout={logout} />
       )}
     </div>
   );
